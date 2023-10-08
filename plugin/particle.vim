@@ -8,11 +8,11 @@ if exists('g:loaded_whid') | finish | endif " prevent loading file twice
 let s:save_cpo = &cpo
 set cpo&vim
 
-hi def link WhidHeader      Number
-hi def link WhidSubHeader   Identifier
-" hi WhidCursorLine ctermbg=238 cterm=none
+hi def link ParticleHeader      Number
+hi def link ParticleSubHeader   Identifier
+" hi ParticleCursorLine ctermbg=238 cterm=none
 
-command! Whid lua require'whid'.whid()
+command! Particle lua require'particle'.particle()
 
 let &cpo = s:save_cpo
 unlet s:save_cpo

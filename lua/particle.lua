@@ -1,4 +1,4 @@
-local utils = require "particle_utils"
+local utils = require "utils"
 local api = vim.api
 local buf, win
 
@@ -23,12 +23,12 @@ local function center(str)
     return string.rep(' ', shift) .. str
 end
 
-local function open_window()
+local function openWindow()
     buf = api.nvim_create_buf(false, true)
     local border_buf = api.nvim_create_buf(false, true)
 
     api.nvim_buf_set_option(buf, 'bufhidden', 'wipe')
-    -- api.nvim_buf_set_option(buf, 'filetype', 'whid')
+    -- api.nvim_buf_set_option(buf, 'filetype', 'particle')
     api.nvim_buf_set_option(buf, 'filetype', 'markdown')
 
     local width = api.nvim_get_option("columns")
@@ -76,7 +76,7 @@ local function open_window()
     -- api.nvim_buf_add_highlight(buf, -1, 'WhidHeader', 0, 0, -1)
 end
 
-local function update_view()
+local function updateView()
     api.nvim_buf_set_option(buf, 'modifiable', true)
 
     if not versions_loaded then
@@ -138,7 +138,7 @@ local function update_view()
     -- api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, versions)
     api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, myLines)
 
-    -- api.nvim_buf_add_highlight(buf, -1, 'whidSubHeader', 1, 0, -1)
+    -- api.nvim_buf_add_highlight(buf, -1, 'particleSubHeader', 1, 0, -1)
     api.nvim_buf_set_option(buf, 'modifiable', false)
     state = 1
 end
@@ -209,10 +209,10 @@ local function downloadRelease()
         cmd
     })
 
-    update_view()
+    updateView()
 end
 
-local function close_window()
+local function closeWindow()
     api.nvim_win_close(win, true)
     state = 0
 end
@@ -223,22 +223,22 @@ local function moveCursor()
     api.nvim_win_set_cursor(win, {new_pos, 0})
 end
 
-local function set_mappings()
+local function setMappings()
     local mappings = {
-        ['['] = 'update_view(-1)',
-        [']'] = 'update_view(1)',
+        ['['] = 'updateView(-1)',
+        [']'] = 'updateView(1)',
         ['<cr>'] = 'loadRelease()',
 
         -- hl are restricting movement in the buffers
-        h = 'update_view()',
-        l = 'update_view()',
-        q = 'close_window()',
+        h = 'updateView()',
+        l = 'updateView()',
+        q = 'closeWindow()',
         k = 'moveCursor()',
         i = 'downloadRelease()'
     }
 
     for k,v in pairs(mappings) do
-        api.nvim_buf_set_keymap(buf, 'n', k, ':lua require"whid".'..v..'<cr>', {
+        api.nvim_buf_set_keymap(buf, 'n', k, ':lua require"particle".'..v..'<cr>', {
             nowait = true, noremap = true, silent = true
         })
     end
@@ -255,19 +255,19 @@ local function set_mappings()
     end
 
 
-local function whid()
-    open_window()
-    set_mappings()
-    update_view()
+local function particle()
+    openWindow()
+    setMappings()
+    updateView()
     api.nvim_win_set_cursor(win, {cursorStart, 0})
 end
 
 return {
-    whid = whid,
-    update_view = update_view,
+    particle = particle,
+    updateView = updateView,
     moveCursor = moveCursor,
     loadRelease = loadRelease,
-    close_window = close_window,
+    closeWindow = closeWindow,
     downloadRelease = downloadRelease
 }
 
