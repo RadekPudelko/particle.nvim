@@ -143,7 +143,7 @@ local function updateView()
     state = 1
 end
 
-local function loadRelease()
+local function loadReleaseBody()
     if state ~= 1 then return end
 
     api.nvim_buf_set_option(buf, 'modifiable', true)
@@ -184,7 +184,19 @@ local function installRelease()
     if #version == 0 then return end
     if(string.lower(string.sub(version, 1, 1)) ~= 'v') then return end
 
-    local index = cur_line_num - cursorStart
+    local index = 0
+    for i = 1, #versions do
+       if version == versions[i] then
+           index = i
+           break
+       end
+    end
+
+    if index == 0 then
+        -- Should never happen
+        print("Unable to find " .. version)
+        return
+    end
 
     local file = toolchainFolder .. version
     if isInstalled[index] then
@@ -209,6 +221,10 @@ local function installRelease()
         cmd
     })
 
+    result = api.nvim_call_function('system', {
+        'rm ' .. tarfile
+    })
+
     updateView()
 end
 
@@ -222,22 +238,47 @@ local function uninstallRelease()
     if #version == 0 then return end
     if(string.lower(string.sub(version, 1, 1)) ~= 'v') then return end
 
-    local index = cur_line_num - cursorStart
+    local index = 0
+    for i = 1, #versions do
+       if version == versions[i] then
+           index = i
+           break
+       end
+    end
+
+    if index == 0 then
+        -- Should never happen
+        print("Unable to find " .. version)
+        return
+    end
+
     if not isInstalled[index] then
+        print("Not installed")
         return
     end
 
     local file = toolchainFolder .. version
+
+    local confirmation
+    repeat
+        confirmation = vim.fn.input("Confirm rm -rf on " .. file .. " (y/n): ")
+    until(confirmation == 'y') or (confirmation == 'n')
+
+    -- clear command area
+    vim.cmd("echon ' '")
+
+    if(confirmation == 'n') then return end
+
     local result = api.nvim_call_function('system', {
         "rm -rf " .. file
     })
 
     if not utils.directoryExists(file) then
-        print(version .. " was successfully removed")
+        -- print(version .. " was successfully removed")
         isInstalled[index] = false
         updateView()
     else
-        print("Failed to remove " .. file)
+        -- print("Failed to remove " .. file)
     end
 end
 
@@ -254,7 +295,7 @@ end
 
 local function setMappings()
     local mappings = {
-        ['<cr>'] = 'loadRelease()',
+        ['<cr>'] = 'loadReleaseBody()',
 
         -- hl are restricting movement in the buffers
         h = 'updateView()',
@@ -295,7 +336,7 @@ return {
     particle = particle,
     updateView = updateView,
     moveCursor = moveCursor,
-    loadRelease = loadRelease,
+    loadReleaseBody = loadReleaseBody,
     closeWindow = closeWindow,
     installRelease = installRelease,
     uninstallRelease = uninstallRelease
