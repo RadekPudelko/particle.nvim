@@ -370,9 +370,6 @@ local function deviceOSView()
         myLines[line] = platforms[id]
         line = line + 1
     end
-    for i = 1, #myLines do
-        print(myLines[i])
-    end
 
     api.nvim_buf_set_option(buf, 'modifiable', true)
     api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, myLines)
@@ -386,35 +383,20 @@ end
 local function deviceOSCompile()
     if state ~= 3 then return end
 
-    -- local cur_line_num = vim.fn.getcurpos()[2];
-    -- local platform = vim.fn.getline(cur_line_num)
-    --
-    -- -- Ignore lines that do not have a version (blank or header)
-    -- if #version == 0 then return end
-    -- if(string.lower(string.sub(version, 1, 1)) ~= 'v') then return end
-    --
-    -- local index = 0
-    -- for i = 1, #versions do
-    --    if version == versions[i] then
-    --        index = i
-    --        break
-    --    end
-    -- end
-    --
-    -- if index == 0 then
-    --     -- Should never happen
-    --     print("Unable to find " .. version)
-    --     return
-    -- end
-    --
-    -- if not isInstalled[index] then return end
+    local cur_line_num = vim.fn.getcurpos()[2];
+    local currentLineText = vim.fn.getline(cur_line_num)
 
-    -- api.nvim_buf_set_option(buf, 'modifiable', true)
-    -- api.nvim_buf_set_lines(buf, cursorStart, -1, true, myLines)
-    --
-    -- api.nvim_buf_set_option(buf, 'modifiable', false)
-    -- state = 3
-    -- utils.printTable(json["platforms"])
+    if #currentLineText == 0 then return end
+
+    local isValidPlatform = false
+    for id, name in pairs(platforms) do
+        if currentLineText == name then
+            isValidPlatform = true
+            break
+        end
+    end
+    if not isValidPlatform then return end
+
 end
 
 local function closeWindow()
@@ -440,7 +422,7 @@ local function setMappings()
         i = 'installRelease()',
         X = 'uninstallRelease()',
         c = 'deviceOSView()',
-        d = 'deviceOSCompile()'
+        m = 'deviceOSCompile()'
     }
 
     for k,v in pairs(mappings) do
