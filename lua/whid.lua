@@ -179,12 +179,14 @@ end
 -- TODO: Probably convert this to somesort of job that runs a call back to update the main view at the end of installation
 local function downloadRelease()
     if state ~= 1 then return end
-    print("downloadRelease ")
 
     local cur_line_num = vim.fn.getcurpos()[2];
     local version = vim.fn.getline(cur_line_num)
+
     if #version == 0 then return end
-    local index = cur_line_num - cursorStart + 1
+    if(string.lower(string.sub(version, 1, 1)) ~= 'v') then return end
+
+    local index = cur_line_num - cursorStart
 
     local file = toolchainFolder .. version
     if isInstalled[index] then
@@ -209,7 +211,6 @@ local function downloadRelease()
         cmd
     })
 
-    print("download complete")
     update_view()
 end
 
