@@ -175,6 +175,8 @@ end
 -- after unziping need to rename folder to version for top level folder
 -- May need to determine what the folder will be called by string building
 -- or use tar command to rename the top level folder during decompression
+-- TODO: Only install lines that version info that are also not already installed
+-- TODO: Probably convert this to somesort of job that runs a call back to update the main view at the end of installation
 local function downloadRelease()
     if state ~= 1 then return end
     print("downloadRelease ")
@@ -277,3 +279,4 @@ return {
   close_window = close_window,
   downloadRelease = downloadRelease
 }
+
