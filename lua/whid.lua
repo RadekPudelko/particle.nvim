@@ -3,6 +3,8 @@ local utils = require "particle_utils"
 local api = vim.api
 local buf, win
 
+local toolchainFolder = "./toolchains/"
+
 -- line in the buffer where data is loaded, along with top of what user can reach
 local cursorStart = 3
 
@@ -11,6 +13,7 @@ local state = 0;
 
 --table of device os tags
 local versions = {}
+local tarballUrls = {}
 local versions_loaded = false
 
 local function center(str)
@@ -92,8 +95,8 @@ local function update_view()
         else
             versions = {}
             for i=1, #json do
-                local version = json[i]["name"]
-                versions[i] = version
+                versions[i] = json[i]["name"]
+                tarballUrls[i] = json[i]["zipball_url"]
             end
             versions_loaded = true
         end
@@ -133,6 +136,43 @@ local function load_release()
   state = 2
 end
 
+-- need to check if already downloaded
+-- after unziping need to rename folder to version for top level folder
+-- May need to determine what the folder will be called by string building
+-- or use tar command to rename the top level folder during decompression
+local function downloadRelease()
+    if state ~= 1 then return end
+    print("downloadRelease ")
+
+  local cur_line_num = vim.fn.getcurpos()[2];
+  local version = vim.fn.getline(cur_line_num)
+  if #version == 0 then return end
+  local index = cur_line_num - cursorStart + 1
+  local url = tarballUrls[index]
+  print(url)
+
+  local file = toolchainFolder .. version
+  local tarfile = file .. ".tar.gz"
+  local result = vim.api.nvim_call_function('system', {
+      "wget -cO - " .. url .. " > " .. tarfile
+  })
+
+  -- TODO: check if the downloaded file exists
+  result = vim.api.nvim_call_function('system', {
+      "mkdir " .. file
+  })
+
+  local cmd = "tar -xf " .. tarfile .. " -C " .. file .. " --strip-components 1"
+  print(cmd)
+  result = vim.api.nvim_call_function('system', {
+      cmd
+  })
+  -- print(result)
+  --
+  -- local json = vim.json.decode(result)
+  -- utils.printTable(json)
+end
+
 
 local function close_window()
   api.nvim_win_close(win, true)
@@ -161,7 +201,8 @@ local function set_mappings()
     h = 'update_view()',
     l = 'update_view(1)',
     q = 'close_window()',
-    k = 'move_cursor()'
+    k = 'move_cursor()',
+    i = 'downloadRelease()'
   }
 
   for k,v in pairs(mappings) do
@@ -171,15 +212,16 @@ local function set_mappings()
   end
 
   -- these are currently restricting what can be done in the buffer, no gg for instance
-  local other_chars = {
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'i', 'n', 'o', 'p', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-  }
-  for k,v in ipairs(other_chars) do
-    api.nvim_buf_set_keymap(buf, 'n', v, '', { nowait = true, noremap = true, silent = true })
-    api.nvim_buf_set_keymap(buf, 'n', v:upper(), '', { nowait = true, noremap = true, silent = true })
-    api.nvim_buf_set_keymap(buf, 'n',  '<c-'..v..'>', '', { nowait = true, noremap = true, silent = true })
-  end
+  -- local other_chars = {
+  --   'a', 'b', 'c', 'd', 'e', 'f', 'g', 'i', 'n', 'o', 'p', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+  -- }
+  -- for k,v in ipairs(other_chars) do
+  --   api.nvim_buf_set_keymap(buf, 'n', v, '', { nowait = true, noremap = true, silent = true })
+  --   api.nvim_buf_set_keymap(buf, 'n', v:upper(), '', { nowait = true, noremap = true, silent = true })
+  --   api.nvim_buf_set_keymap(buf, 'n',  '<c-'..v..'>', '', { nowait = true, noremap = true, silent = true })
+  -- end
 end
+
 
 local function whid()
   open_window()
@@ -195,5 +237,6 @@ return {
   open_file = open_file,
   move_cursor = move_cursor,
   load_release = load_release,
-  close_window = close_window
+  close_window = close_window,
+  downloadRelease = downloadRelease
 }
