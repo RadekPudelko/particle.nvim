@@ -256,6 +256,7 @@ local function setMappings()
 
 
 local function particle()
+    if state ~= 0 then return end
     openWindow()
     setMappings()
     updateView()

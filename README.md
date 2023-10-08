@@ -14,7 +14,12 @@ use {
 }
 ```
 
-Based on https://github.com/rafcamlet/nvim-whid
+# Sources
 
-Inspired by https://github.com/williamboman/mason.nvim
+Based on:
+1. https://github.com/rafcamlet/nvim-whid 
+2. https://www.linode.com/docs/guides/write-a-neovim-plugin-with-lua/
+
+Inspired by:
+1. https://github.com/williamboman/mason.nvim
 
