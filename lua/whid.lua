@@ -1,11 +1,12 @@
+local utils = require "particle_utils"
 --- Add Descriptions of releases
 local api = vim.api
 local buf, win
 local state = 0;
-local versions_loaded = false
 
 --table of device os tags
 local versions = {}
+local versions_loaded = false
 
 local function center(str)
   local width = api.nvim_win_get_width(0)
@@ -63,43 +64,6 @@ local function open_window()
   api.nvim_buf_set_lines(buf, 0, -1, false, { center('Particle.nvim'), '', ''})
   state = 1
   -- api.nvim_buf_add_highlight(buf, -1, 'WhidHeader', 0, 0, -1)
-end
-
-local function printTable( t )
- 
-    local printTable_cache = {}
- 
-    local function sub_printTable( t, indent )
- 
-        if ( printTable_cache[tostring(t)] ) then
-            print( indent .. "*" .. tostring(t) )
-        else
-            printTable_cache[tostring(t)] = true
-            if ( type( t ) == "table" ) then
-                for pos,val in pairs( t ) do
-                    if ( type(val) == "table" ) then
-                        print( indent .. "[" .. pos .. "] => " .. tostring( t ).. " {" )
-                        sub_printTable( val, indent .. string.rep( " ", string.len(pos)+8 ) )
-                        print( indent .. string.rep( " ", string.len(pos)+6 ) .. "}" )
-                    elseif ( type(val) == "string" ) then
-                        print( indent .. "[" .. pos .. '] => "' .. val .. '"' )
-                    else
-                        print( indent .. "[" .. pos .. "] => " .. tostring(val) )
-                    end
-                end
-            else
-                print( indent..tostring(t) )
-            end
-        end
-    end
- 
-    if ( type(t) == "table" ) then
-        print( tostring(t) .. " {" )
-        sub_printTable( t, "  " )
-        print( "}" )
-    else
-        sub_printTable( t, "  " )
-    end
 end
 
 local function update_view()
@@ -208,7 +172,6 @@ local function set_mappings()
 end
 
 local function whid()
-  position = 0
   open_window()
   set_mappings()
   update_view()
