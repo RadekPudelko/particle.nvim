@@ -1,7 +1,11 @@
 --- Add Descriptions of releases
 local api = vim.api
 local buf, win
-local position = 0
+local state = 0;
+local versions_loaded = false
+
+--table of device os tags
+local versions = {}
 
 local function center(str)
   local width = api.nvim_win_get_width(0)
@@ -57,6 +61,7 @@ local function open_window()
   vim.api.nvim_win_set_option(win, 'cursorline', true)
 
   api.nvim_buf_set_lines(buf, 0, -1, false, { center('Particle.nvim'), '', ''})
+  state = 1
   -- api.nvim_buf_add_highlight(buf, -1, 'WhidHeader', 0, 0, -1)
 end
 
@@ -97,53 +102,43 @@ local function printTable( t )
     end
 end
 
-local function update_view(direction)
-  vim.api.nvim_buf_set_option(buf, 'modifiable', true)
-  position = position + direction
-  if position < 0 then position = 0 end
+local function update_view()
+    vim.api.nvim_buf_set_option(buf, 'modifiable', true)
 
-  -- local result = vim.api.nvim_call_function('systemlist', {
-  local result = vim.api.nvim_call_function('system', {
-      -- 'git diff-tree --no-commit-id --name-only -r HEAD~'..position
-      -- "git ls-remote --tags https://github.com/particle-iot/device-os"
-      "curl -s https://api.github.com/repos/particle-iot/device-os/tags"
-  })
-  
-  -- print(result)
-  -- table of upto 30 tables
-  -- nested table with fileds [name], zipball_url
-    -- table with 30 subtables of tags
-    local json = vim.json.decode(result)
+    if not versions_loaded then
+        local result = vim.api.nvim_call_function('system', {
+            "curl -Ls https://api.github.com/repos/particle-iot/device-os/tags"
+        })
 
-  if #result == 0 then table.insert(result, '') end
+        -- parse json response if there was one
+        local json = nil
+        if #result ~= 0 then
+            json = vim.json.decode(result)
+        end
 
-  local result2 = {}
-  for i=1, #json do
-      -- local item = result[#result + 1 - i]
-      -- local version = string.match(item, "refs/tags/(.*)")
-      version = json[i]["name"]
-      result2[i] = version
-  end
-  -- for i=1, #result do
-  --     local item = result[#result + 1 - i]
-  --     local version = string.match(item, "refs/tags/(.*)")
-  --     result2[i] = version
-  -- end
+        -- Curl failed due to network or no tag results in the curl
+        -- expecting 30 tags by default
+        if #result == 0 or json[1] == nil then
+            versions[1] = 'Failed to curl tags from https://api.github.com/repos/particle-iot/device-os/tags'
+        else
+            versions = {}
+            for i=1, #json do
+                local version = json[i]["name"]
+                versions[i] = version
+            end
+            versions_loaded = true
+        end
+    end
+    api.nvim_buf_set_lines(buf, 3, -1, false, versions)
 
-  -- for k,v in pairs(result) do
-  --     local version = string.match(result[#result], "refs/tags/(.*)")
-  --     result2[k] = '  '..version
-  -- end
-  --   print(result[1])
-
-  -- api.nvim_buf_set_lines(buf, 1, 2, false, {center('HEAD~'..position)})
-  api.nvim_buf_set_lines(buf, 3, -1, false, result2)
-
-  -- api.nvim_buf_add_highlight(buf, -1, 'whidSubHeader', 1, 0, -1)
-  vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+    -- api.nvim_buf_add_highlight(buf, -1, 'whidSubHeader', 1, 0, -1)
+    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+    state = 1
 end
 
 local function load_release()
+    if state ~= 1 then return end
+
   vim.api.nvim_buf_set_option(buf, 'modifiable', true)
 
   local cur_line_num = vim.fn.getcurpos()[2];
@@ -165,11 +160,13 @@ local function load_release()
   api.nvim_set_option_value('filetype', 'markdown', {['buf']=buf})
   -- api.nvim_set_option_value('wrap', true, {['buf']=buf})
   vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+  state = 2
 end
 
 
 local function close_window()
   api.nvim_win_close(win, true)
+  state = 0
 end
 
 local function open_file()
@@ -189,7 +186,7 @@ local function set_mappings()
     [']'] = 'update_view(1)',
     -- ['<cr>'] = 'open_file()',
     ['<cr>'] = 'load_release()',
-    h = 'update_view(-1)',
+    h = 'update_view()',
     l = 'update_view(1)',
     q = 'close_window()',
     k = 'move_cursor()'
@@ -214,7 +211,7 @@ local function whid()
   position = 0
   open_window()
   set_mappings()
-  update_view(0)
+  update_view()
   api.nvim_win_set_cursor(win, {4, 0})
 end
 
