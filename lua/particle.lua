@@ -174,7 +174,7 @@ end
 -- May need to determine what the folder will be called by string building
 -- or use tar command to rename the top level folder during decompression
 -- TODO: Probably convert this to somesort of job that runs a call back to update the main view at the end of installation
-local function downloadRelease()
+local function installRelease()
     if state ~= 1 then return end
 
     local cur_line_num = vim.fn.getcurpos()[2];
@@ -212,6 +212,35 @@ local function downloadRelease()
     updateView()
 end
 
+local function uninstallRelease()
+    if state ~= 1 then return end
+
+    local cur_line_num = vim.fn.getcurpos()[2];
+    local version = vim.fn.getline(cur_line_num)
+
+    -- Ignore lines that do not have a version (blank or header)
+    if #version == 0 then return end
+    if(string.lower(string.sub(version, 1, 1)) ~= 'v') then return end
+
+    local index = cur_line_num - cursorStart
+    if not isInstalled[index] then
+        return
+    end
+
+    local file = toolchainFolder .. version
+    local result = api.nvim_call_function('system', {
+        "rm -rf " .. file
+    })
+
+    if not utils.directoryExists(file) then
+        print(version .. " was successfully removed")
+        isInstalled[index] = false
+        updateView()
+    else
+        print("Failed to remove " .. file)
+    end
+end
+
 local function closeWindow()
     api.nvim_win_close(win, true)
     state = 0
@@ -225,8 +254,6 @@ end
 
 local function setMappings()
     local mappings = {
-        ['['] = 'updateView(-1)',
-        [']'] = 'updateView(1)',
         ['<cr>'] = 'loadRelease()',
 
         -- hl are restricting movement in the buffers
@@ -234,7 +261,8 @@ local function setMappings()
         l = 'updateView()',
         q = 'closeWindow()',
         k = 'moveCursor()',
-        i = 'downloadRelease()'
+        i = 'installRelease()',
+        X = 'uninstallRelease()'
     }
 
     for k,v in pairs(mappings) do
@@ -269,6 +297,7 @@ return {
     moveCursor = moveCursor,
     loadRelease = loadRelease,
     closeWindow = closeWindow,
-    downloadRelease = downloadRelease
+    installRelease = installRelease,
+    uninstallRelease = uninstallRelease
 }
 
