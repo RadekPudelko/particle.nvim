@@ -13,6 +13,7 @@ local state = 0;
 
 --table of device os tags
 local versions = {}
+local isInstalled = {}
 local tarballUrls = {}
 local versions_loaded = false
 
@@ -27,7 +28,8 @@ local function open_window()
   local border_buf = vim.api.nvim_create_buf(false, true)
 
   vim.api.nvim_buf_set_option(buf, 'bufhidden', 'wipe')
-  vim.api.nvim_buf_set_option(buf, 'filetype', 'whid')
+  -- vim.api.nvim_buf_set_option(buf, 'filetype', 'whid')
+  vim.api.nvim_buf_set_option(buf, 'filetype', 'markdown')
 
   local width = vim.api.nvim_get_option("columns")
   local height = vim.api.nvim_get_option("lines")
@@ -101,7 +103,40 @@ local function update_view()
             versions_loaded = true
         end
     end
-    api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, versions)
+
+    -- TODO: figure out better check for installation, maybe a file I create?
+    for i=1, #versions do
+        local file = toolchainFolder .. versions[i]
+        -- TODO: figure out possible errs and how to handle
+        local exists, err = utils.directoryExists(file)
+        -- print("err ".. err)
+        isInstalled[i] = exists
+    end
+
+    local myLines = {}
+    myLines[1] = "## Installed"
+    local line = 2
+    for i=1, #versions do
+        if(isInstalled[i]) then
+            myLines[line] = versions[i]
+            line = line + 1
+        end
+    end
+
+    myLines[line] = ""
+    line = line + 1
+
+    myLines[line] = "## Available"
+    line = line + 1
+    for i=1, #versions do
+        if(not isInstalled[i]) then
+            myLines[line] = versions[i]
+            line = line + 1
+        end
+    end
+
+    -- api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, versions)
+    api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, myLines)
 
     -- api.nvim_buf_add_highlight(buf, -1, 'whidSubHeader', 1, 0, -1)
     vim.api.nvim_buf_set_option(buf, 'modifiable', false)
@@ -144,33 +179,36 @@ local function downloadRelease()
     if state ~= 1 then return end
     print("downloadRelease ")
 
-  local cur_line_num = vim.fn.getcurpos()[2];
-  local version = vim.fn.getline(cur_line_num)
-  if #version == 0 then return end
-  local index = cur_line_num - cursorStart + 1
-  local url = tarballUrls[index]
-  print(url)
+    local cur_line_num = vim.fn.getcurpos()[2];
+    local version = vim.fn.getline(cur_line_num)
+    if #version == 0 then return end
+    local index = cur_line_num - cursorStart + 1
 
-  local file = toolchainFolder .. version
-  local tarfile = file .. ".tar.gz"
-  local result = vim.api.nvim_call_function('system', {
-      "wget -cO - " .. url .. " > " .. tarfile
-  })
+    local file = toolchainFolder .. version
+    if isInstalled[index] then
+        print(version .. " is already installed at " .. file)
+        return
+    end
 
-  -- TODO: check if the downloaded file exists
-  result = vim.api.nvim_call_function('system', {
-      "mkdir " .. file
-  })
+    local url = tarballUrls[index]
+    local tarfile = file .. ".tar.gz"
 
-  local cmd = "tar -xf " .. tarfile .. " -C " .. file .. " --strip-components 1"
-  print(cmd)
-  result = vim.api.nvim_call_function('system', {
-      cmd
-  })
-  -- print(result)
-  --
-  -- local json = vim.json.decode(result)
-  -- utils.printTable(json)
+    local result = vim.api.nvim_call_function('system', {
+        "wget -cO - " .. url .. " > " .. tarfile
+    })
+
+    -- TODO: check if the downloaded file exists
+    result = vim.api.nvim_call_function('system', {
+        "mkdir " .. file
+    })
+
+    local cmd = "tar -xf " .. tarfile .. " -C " .. file .. " --strip-components 1"
+    result = vim.api.nvim_call_function('system', {
+        cmd
+    })
+
+    print("download complete")
+    update_view()
 end
 
 
@@ -232,7 +270,6 @@ end
 
 return {
   whid = whid,
-  -- update_view = update_view,
   update_view = update_view,
   open_file = open_file,
   move_cursor = move_cursor,

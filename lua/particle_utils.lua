@@ -33,7 +33,20 @@ local function printTable(t)
     end
 end
 
+local function directoryExists(path)
+    local ok, err, code = os.rename(path, path)
+    if not ok then
+        if code == 13 then
+            -- Permission denied, but directory exists
+            return true
+        end
+        return false, err
+    end
+    return true
+end
+
 return {
-    printTable = printTable
+    printTable = printTable,
+    directoryExists = directoryExists
 }
 
