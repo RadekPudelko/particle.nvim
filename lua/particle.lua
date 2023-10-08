@@ -2,8 +2,23 @@ local utils = require "utils"
 local api = vim.api
 local buf, win
 
+-- A few places to pull particle platforms from
+-- toolchain modules folder
+---- probably not this one, since the names dont match up with actual platforms
+-- toolchain build/platform.mk
+---- akward to parse
+-- release title (needs to be lower cased + spaces removed)
+---- trustworthy?
+-- ~/.vscode/extensions/particle.particle-vscode-core-1.16.10/node_modules/@particle/device-constants/dist/js/constants.json
+---- For display names, which can be corresponded to platform
+-- toolchain .workbench/manifest.json for ids
+-- vscode extension: ~/.vscode/extensions/particle.particle-vscode-core-1.16.10/node_modules/@particle/toolchain-manager/manifest.json
+---- contains everything
+
+
 -- where the toolchains will be installed
 local toolchainFolder = "./toolchains/"
+local manifestFile = "./manifest.json"
 
 -- line in the buffer where data is loaded, along with top of what user can reach
 local cursorStart = 3
@@ -16,6 +31,10 @@ local versions = {}
 local isInstalled = {}
 local tarballUrls = {}
 local versions_loaded = false
+
+local version
+
+local platforms = {}
 
 local function center(str)
     local width = api.nvim_win_get_width(0)
@@ -104,6 +123,7 @@ local function updateView()
         end
     end
 
+
     -- TODO: figure out better check for installation, maybe a file I create?
     for i=1, #versions do
         local file = toolchainFolder .. versions[i]
@@ -135,12 +155,28 @@ local function updateView()
         end
     end
 
+
+
     -- api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, versions)
     api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, myLines)
 
     -- api.nvim_buf_add_highlight(buf, -1, 'particleSubHeader', 1, 0, -1)
     api.nvim_buf_set_option(buf, 'modifiable', false)
     state = 1
+end
+
+local function loadPlatforms()
+    local file = io.open(manifestFile, "r")
+    if not file then return end
+    local manifestText = file:read("*a")
+    file:close()
+
+    platforms = {}
+    local json = vim.json.decode(manifestText)
+    for i = 1, #json["platforms"] do
+        local id = json["platforms"][i]["id"]
+        platforms[id] = json["platforms"][i]["name"]
+    end
 end
 
 local function loadReleaseBody()
@@ -282,6 +318,105 @@ local function uninstallRelease()
     end
 end
 
+local function deviceOSView()
+    if state ~= 1 then return end
+
+    local cur_line_num = vim.fn.getcurpos()[2];
+    local currentLineText = vim.fn.getline(cur_line_num)
+
+    -- Ignore lines that do not have a version (blank or header)
+    if #currentLineText == 0 then return end
+    if(string.lower(string.sub(currentLineText, 1, 1)) ~= 'v') then return end
+
+    local index = 0
+    for i = 1, #versions do
+       if currentLineText == versions[i] then
+           index = i
+           break
+       end
+    end
+
+    if index == 0 then
+        -- Should never happen
+        print("Unable to find " .. version)
+        return
+    end
+
+    if not isInstalled[index] then return end
+
+    version = currentLineText
+
+    local toolchainManifest = toolchainFolder .. version .. "/.workbench/manifest.json"
+    local file = io.open(toolchainManifest, "r")
+    if not file then return end
+    local manifestText = file:read("*a")
+    file:close()
+
+    -- TODO: Set up some sort of test or checks here to make sure the file format is as
+    -- we expect it to be
+    local json = vim.json.decode(manifestText)
+    local toolchainPlatformIds = json["toolchains"][1]["platforms"]
+
+    -- TODO: The line setting is not working correctly
+    local myLines = {}
+    local line = 1
+    myLines[line] = "Device OS: " .. version
+    line = line + 1
+    myLines[line] = ""
+    line = line + 1
+
+    for i=1, #toolchainPlatformIds do
+        local id = toolchainPlatformIds[i]
+        myLines[line] = platforms[id]
+        line = line + 1
+    end
+    for i = 1, #myLines do
+        print(myLines[i])
+    end
+
+    api.nvim_buf_set_option(buf, 'modifiable', true)
+    api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, myLines)
+
+    api.nvim_buf_set_option(buf, 'modifiable', false)
+    state = 3
+
+    -- utils.printTable(json["platforms"])
+end
+
+local function deviceOSCompile()
+    if state ~= 3 then return end
+
+    -- local cur_line_num = vim.fn.getcurpos()[2];
+    -- local platform = vim.fn.getline(cur_line_num)
+    --
+    -- -- Ignore lines that do not have a version (blank or header)
+    -- if #version == 0 then return end
+    -- if(string.lower(string.sub(version, 1, 1)) ~= 'v') then return end
+    --
+    -- local index = 0
+    -- for i = 1, #versions do
+    --    if version == versions[i] then
+    --        index = i
+    --        break
+    --    end
+    -- end
+    --
+    -- if index == 0 then
+    --     -- Should never happen
+    --     print("Unable to find " .. version)
+    --     return
+    -- end
+    --
+    -- if not isInstalled[index] then return end
+
+    -- api.nvim_buf_set_option(buf, 'modifiable', true)
+    -- api.nvim_buf_set_lines(buf, cursorStart, -1, true, myLines)
+    --
+    -- api.nvim_buf_set_option(buf, 'modifiable', false)
+    -- state = 3
+    -- utils.printTable(json["platforms"])
+end
+
 local function closeWindow()
     api.nvim_win_close(win, true)
     state = 0
@@ -303,7 +438,9 @@ local function setMappings()
         q = 'closeWindow()',
         k = 'moveCursor()',
         i = 'installRelease()',
-        X = 'uninstallRelease()'
+        X = 'uninstallRelease()',
+        c = 'deviceOSView()',
+        d = 'deviceOSCompile()'
     }
 
     for k,v in pairs(mappings) do
@@ -327,6 +464,7 @@ local function setMappings()
 local function particle()
     if state ~= 0 then return end
     openWindow()
+    loadPlatforms()
     setMappings()
     updateView()
     api.nvim_win_set_cursor(win, {cursorStart, 0})
@@ -339,6 +477,8 @@ return {
     loadReleaseBody = loadReleaseBody,
     closeWindow = closeWindow,
     installRelease = installRelease,
-    uninstallRelease = uninstallRelease
+    uninstallRelease = uninstallRelease,
+    deviceOSView = deviceOSView,
+    deviceOSCompile= deviceOSCompile
 }
 
