@@ -1,3 +1,4 @@
+--- Add Descriptions of releases
 local api = vim.api
 local buf, win
 local position = 0
@@ -55,8 +56,8 @@ local function open_window()
 
   vim.api.nvim_win_set_option(win, 'cursorline', true)
 
-  api.nvim_buf_set_lines(buf, 0, -1, false, { center('What have i done?'), '', ''})
-  api.nvim_buf_add_highlight(buf, -1, 'WhidHeader', 0, 0, -1)
+  api.nvim_buf_set_lines(buf, 0, -1, false, { center('Particle.nvim'), '', ''})
+  -- api.nvim_buf_add_highlight(buf, -1, 'WhidHeader', 0, 0, -1)
 end
 
 local function printTable( t )
@@ -135,12 +136,37 @@ local function update_view(direction)
   -- end
   --   print(result[1])
 
-  api.nvim_buf_set_lines(buf, 1, 2, false, {center('HEAD~'..position)})
+  -- api.nvim_buf_set_lines(buf, 1, 2, false, {center('HEAD~'..position)})
   api.nvim_buf_set_lines(buf, 3, -1, false, result2)
 
-  api.nvim_buf_add_highlight(buf, -1, 'whidSubHeader', 1, 0, -1)
+  -- api.nvim_buf_add_highlight(buf, -1, 'whidSubHeader', 1, 0, -1)
   vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 end
+
+local function load_release()
+  vim.api.nvim_buf_set_option(buf, 'modifiable', true)
+
+  local cur_line_num = vim.fn.getcurpos()[2];
+  local version = vim.fn.getline(cur_line_num)
+  if #version == 0 then return end
+
+  local result = vim.api.nvim_call_function('system', {
+      "curl -Ls https://api.github.com/repos/particle-iot/device-os/releases/tags/"..version
+  })
+
+  local json = vim.json.decode(result)
+  local body = json["body"]
+  lines = {}
+  for s in body:gmatch("[^\r\n]+") do
+      table.insert(lines, s)
+  end
+
+  api.nvim_buf_set_lines(buf, 3, -1, false, lines)
+  api.nvim_set_option_value('filetype', 'markdown', {['buf']=buf})
+  -- api.nvim_set_option_value('wrap', true, {['buf']=buf})
+  vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+end
+
 
 local function close_window()
   api.nvim_win_close(win, true)
@@ -161,7 +187,8 @@ local function set_mappings()
   local mappings = {
     ['['] = 'update_view(-1)',
     [']'] = 'update_view(1)',
-    ['<cr>'] = 'open_file()',
+    -- ['<cr>'] = 'open_file()',
+    ['<cr>'] = 'load_release()',
     h = 'update_view(-1)',
     l = 'update_view(1)',
     q = 'close_window()',
@@ -193,8 +220,10 @@ end
 
 return {
   whid = whid,
+  -- update_view = update_view,
   update_view = update_view,
   open_file = open_file,
   move_cursor = move_cursor,
+  load_release = load_release,
   close_window = close_window
 }
