@@ -2,6 +2,11 @@ local utils = require "particle_utils"
 --- Add Descriptions of releases
 local api = vim.api
 local buf, win
+
+-- line in the buffer where data is loaded, along with top of what user can reach
+local cursorStart = 3
+
+--0=not loaded, 1=versions buffer view, 2=version description buffer view
 local state = 0;
 
 --table of device os tags
@@ -93,7 +98,7 @@ local function update_view()
             versions_loaded = true
         end
     end
-    api.nvim_buf_set_lines(buf, 3, -1, false, versions)
+    api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, versions)
 
     -- api.nvim_buf_add_highlight(buf, -1, 'whidSubHeader', 1, 0, -1)
     vim.api.nvim_buf_set_option(buf, 'modifiable', false)
@@ -115,13 +120,14 @@ local function load_release()
 
   local json = vim.json.decode(result)
   local body = json["body"]
-  lines = {}
+  local lines = {}
   for s in body:gmatch("[^\r\n]+") do
       table.insert(lines, s)
   end
 
-  api.nvim_buf_set_lines(buf, 3, -1, false, lines)
+  api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, lines)
   api.nvim_set_option_value('filetype', 'markdown', {['buf']=buf})
+  -- api.nvim_set_option_value('startofline', true, {['win']=win})
   -- api.nvim_set_option_value('wrap', true, {['buf']=buf})
   vim.api.nvim_buf_set_option(buf, 'modifiable', false)
   state = 2
@@ -140,7 +146,7 @@ local function open_file()
 end
 
 local function move_cursor()
-  local new_pos = math.max(4, api.nvim_win_get_cursor(win)[1] - 1)
+  local new_pos = math.max(cursorStart, api.nvim_win_get_cursor(win)[1] - 1)
   api.nvim_win_set_cursor(win, {new_pos, 0})
 end
 
@@ -150,6 +156,8 @@ local function set_mappings()
     [']'] = 'update_view(1)',
     -- ['<cr>'] = 'open_file()',
     ['<cr>'] = 'load_release()',
+
+    -- hl are restricting movement in the buffers
     h = 'update_view()',
     l = 'update_view(1)',
     q = 'close_window()',
@@ -161,6 +169,8 @@ local function set_mappings()
         nowait = true, noremap = true, silent = true
       })
   end
+
+  -- these are currently restricting what can be done in the buffer, no gg for instance
   local other_chars = {
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'i', 'n', 'o', 'p', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
   }
@@ -175,7 +185,7 @@ local function whid()
   open_window()
   set_mappings()
   update_view()
-  api.nvim_win_set_cursor(win, {4, 0})
+  api.nvim_win_set_cursor(win, {cursorStart, 0})
 end
 
 return {
