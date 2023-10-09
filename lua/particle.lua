@@ -15,11 +15,21 @@ local buf, win
 -- vscode extension: ~/.vscode/extensions/particle.particle-vscode-core-1.16.10/node_modules/@particle/toolchain-manager/manifest.json
 ---- contains everything
 
+-- TODO: github tarballs/zipballs do not contain submodules, so need to find a way
+-- to download full device os
+--- See how particle does it
+--- Could use git to do it, git clone, checkout, init submodules 
+--- particle uses https://binaries.particle.io/device-os/v5.5.0.tar.gz
+--- should compare if there is a difference in compiled binaries if using git vs binaries.particle.io
+
+
 
 -- where the toolchains will be installed
 local toolchainFolder = "./toolchains/"
+-- local toolchainFolder = "~/.particle/toolchains/"
 local manifestFile = "./manifest.json"
 
+local particleBinariesUrl = "https://binaries.particle.io/device-os/"
 -- line in the buffer where data is loaded, along with top of what user can reach
 local cursorStart = 3
 
@@ -32,7 +42,7 @@ local isInstalled = {}
 local tarballUrls = {}
 local versions_loaded = false
 
-local version
+local selectedVersion
 
 local platforms = {}
 
@@ -128,7 +138,7 @@ local function updateView()
     for i=1, #versions do
         local file = toolchainFolder .. versions[i]
         -- TODO: figure out possible errs and how to handle
-        local exists, err = utils.directoryExists(file)
+        local exists, err = utils.exists(file)
         -- print("err ".. err)
         isInstalled[i] = exists
     end
@@ -184,8 +194,8 @@ local function loadReleaseBody()
 
     api.nvim_buf_set_option(buf, 'modifiable', true)
 
-    local cur_line_num = vim.fn.getcurpos()[2];
-    local version = vim.fn.getline(cur_line_num)
+    local curLineNum = vim.fn.getcurpos()[2];
+    local version = vim.fn.getline(curLineNum)
     if #version == 0 then return end
 
     local result = api.nvim_call_function('system', {
@@ -213,8 +223,8 @@ end
 local function installRelease()
     if state ~= 1 then return end
 
-    local cur_line_num = vim.fn.getcurpos()[2];
-    local version = vim.fn.getline(cur_line_num)
+    local curLineNum = vim.fn.getcurpos()[2];
+    local version = vim.fn.getline(curLineNum)
 
     -- Ignore lines that do not have a version (blank or header)
     if #version == 0 then return end
@@ -240,12 +250,22 @@ local function installRelease()
         return
     end
 
-    local url = tarballUrls[index]
-    local tarfile = file .. ".tar.gz"
+    -- local url = tarballUrls[index]
 
+    local url = particleBinariesUrl .. version .. ".tar.gz"
+    local tarfile = toolchainFolder .. version .. ".tar.gz"
+
+    local cmd = "wget -cO - " .. url .. " > " .. tarfile
+    print(cmd)
     local result = api.nvim_call_function('system', {
-        "wget -cO - " .. url .. " > " .. tarfile
+        cmd
     })
+    -- print(result)
+
+    if not utils.exists(tarfile) then
+        print("Failed to download file from url: " .. url)
+        return
+    end
 
     -- TODO: check if the downloaded file exists
     result = api.nvim_call_function('system', {
@@ -253,6 +273,7 @@ local function installRelease()
     })
 
     local cmd = "tar -xf " .. tarfile .. " -C " .. file .. " --strip-components 1"
+    print(cmd)
     result = api.nvim_call_function('system', {
         cmd
     })
@@ -267,8 +288,8 @@ end
 local function uninstallRelease()
     if state ~= 1 then return end
 
-    local cur_line_num = vim.fn.getcurpos()[2];
-    local version = vim.fn.getline(cur_line_num)
+    local curLineNum = vim.fn.getcurpos()[2];
+    local version = vim.fn.getline(curLineNum)
 
     -- Ignore lines that do not have a version (blank or header)
     if #version == 0 then return end
@@ -309,7 +330,7 @@ local function uninstallRelease()
         "rm -rf " .. file
     })
 
-    if not utils.directoryExists(file) then
+    if not utils.exists(file) then
         -- print(version .. " was successfully removed")
         isInstalled[index] = false
         updateView()
@@ -321,16 +342,16 @@ end
 local function deviceOSView()
     if state ~= 1 then return end
 
-    local cur_line_num = vim.fn.getcurpos()[2];
-    local currentLineText = vim.fn.getline(cur_line_num)
+    local curLineNum = vim.fn.getcurpos()[2];
+    local version = vim.fn.getline(curLineNum)
 
     -- Ignore lines that do not have a version (blank or header)
-    if #currentLineText == 0 then return end
-    if(string.lower(string.sub(currentLineText, 1, 1)) ~= 'v') then return end
+    if #version == 0 then return end
+    if(string.lower(string.sub(version, 1, 1)) ~= 'v') then return end
 
     local index = 0
     for i = 1, #versions do
-       if currentLineText == versions[i] then
+       if version == versions[i] then
            index = i
            break
        end
@@ -343,8 +364,6 @@ local function deviceOSView()
     end
 
     if not isInstalled[index] then return end
-
-    version = currentLineText
 
     local toolchainManifest = toolchainFolder .. version .. "/.workbench/manifest.json"
     local file = io.open(toolchainManifest, "r")
@@ -371,6 +390,8 @@ local function deviceOSView()
         line = line + 1
     end
 
+    selectedVersion = version
+
     api.nvim_buf_set_option(buf, 'modifiable', true)
     api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, myLines)
 
@@ -383,8 +404,8 @@ end
 local function deviceOSCompile()
     if state ~= 3 then return end
 
-    local cur_line_num = vim.fn.getcurpos()[2];
-    local currentLineText = vim.fn.getline(cur_line_num)
+    local curLineNum = vim.fn.getcurpos()[2];
+    local currentLineText = vim.fn.getline(curLineNum)
 
     if #currentLineText == 0 then return end
 
@@ -395,7 +416,17 @@ local function deviceOSCompile()
             break
         end
     end
+
     if not isValidPlatform then return end
+
+    local toolchainModules = toolchainFolder .. selectedVersion .. "/modules"
+    local cmd = "cd " .. toolchainModules .. " && make clean PLATFORM=" .. currentLineText
+    print(cmd)
+    local result = api.nvim_call_function('system', {
+        cmd
+    })
+    print(result)
+    -- CC=$PARTICLE_CC && bear -- make all -s PLATFORM=$(PLATFORM)
 
 end
 

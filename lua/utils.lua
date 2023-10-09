@@ -33,7 +33,8 @@ local function printTable(t)
     end
 end
 
-local function directoryExists(path)
+-- True if a file or folder exists at path
+local function exists(path)
     local ok, err, code = os.rename(path, path)
     if not ok then
         if code == 13 then
@@ -47,6 +48,6 @@ end
 
 return {
     printTable = printTable,
-    directoryExists = directoryExists
+    exists = exists
 }
 
