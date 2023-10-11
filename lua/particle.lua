@@ -25,6 +25,7 @@ local buf, win
 
 
 -- where the toolchains will be installed
+local CC_PATH = "~/.particle/toolchains/gcc-arm/10.2.1/bin/arm-none-eabi-gcc"
 local toolchainFolder = "./toolchains/"
 -- local toolchainFolder = "~/.particle/toolchains/"
 local manifestFile = "./manifest.json"
@@ -46,13 +47,18 @@ local selectedVersion
 
 local platforms = {}
 
+local job_id = 0
+local startTime
+
 local function center(str)
     local width = api.nvim_win_get_width(0)
     local shift = math.floor(width / 2) - math.floor(string.len(str) / 2)
     return string.rep(' ', shift) .. str
 end
 
+
 local function openWindow()
+    print("job running: " .. job_id)
     buf = api.nvim_create_buf(false, true)
     local border_buf = api.nvim_create_buf(false, true)
 
@@ -401,6 +407,12 @@ local function deviceOSView()
     -- utils.printTable(json["platforms"])
 end
 
+-- there is an option to make stdout/err buffered, so that its is handled all at once
+local function asyncTest(command, cwd, envVars)
+    -- Define job options
+end
+
+-- This job will die if neovim is closed, but not if the plugin is closed
 local function deviceOSCompile()
     if state ~= 3 then return end
 
@@ -420,14 +432,22 @@ local function deviceOSCompile()
     if not isValidPlatform then return end
 
     local toolchainModules = toolchainFolder .. selectedVersion .. "/modules"
-    local cmd = "cd " .. toolchainModules .. " && make clean PLATFORM=" .. currentLineText
-    print(cmd)
-    local result = api.nvim_call_function('system', {
-        cmd
-    })
-    print(result)
-    -- CC=$PARTICLE_CC && bear -- make all -s PLATFORM=$(PLATFORM)
+    local command = {"bear", "--", "make", "clean", "all", "PLATFORM=" .. currentLineText}
+    local job_options = {
+        cwd = toolchainModules,
+        env = {CC=CC_PATH},
+        on_exit = function(_, code)
+            print("Command exit with code " .. code)
+            local endTime = os.time()
+            local elapsed = endTime - startTime
+            print("Job runtime: " .. elapsed .. " seconds")
+        end,
+    }
 
+    -- Run the job
+    startTime = os.time()
+    job_id = vim.fn.jobstart(command, job_options)
+    print("job_id: " .. job_id)
 end
 
 local function closeWindow()
@@ -453,7 +473,8 @@ local function setMappings()
         i = 'installRelease()',
         X = 'uninstallRelease()',
         c = 'deviceOSView()',
-        m = 'deviceOSCompile()'
+        m = 'deviceOSCompile()',
+        -- a = 'asyncTest()'
     }
 
     for k,v in pairs(mappings) do
@@ -471,8 +492,7 @@ local function setMappings()
         --   api.nvim_buf_set_keymap(buf, 'n', v:upper(), '', { nowait = true, noremap = true, silent = true })
         --   api.nvim_buf_set_keymap(buf, 'n',  '<c-'..v..'>', '', { nowait = true, noremap = true, silent = true })
         -- end
-    end
-
+end
 
 local function particle()
     if state ~= 0 then return end
@@ -492,6 +512,7 @@ return {
     installRelease = installRelease,
     uninstallRelease = uninstallRelease,
     deviceOSView = deviceOSView,
-    deviceOSCompile= deviceOSCompile
+    deviceOSCompile = deviceOSCompile,
+    asyncTest = asyncTest
 }
 
