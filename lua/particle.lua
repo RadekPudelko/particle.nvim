@@ -61,13 +61,14 @@ local cursorStart = 3
 local state = 0;
 
 --table of device os tags
-local versions = {}
 local isInstalled = {}
-local tarballUrls = {}
 local versions_loaded = false
 
 local selectedVersion
 
+-- Contents of Particle's manifest json file
+local particleManifest
+local versions = {}
 local platforms = {}
 
 local job_id = 0
@@ -153,32 +154,6 @@ end
 local function updateView()
     api.nvim_buf_set_option(buf, 'modifiable', true)
 
-    -- if not versions_loaded then
-    --     local result = api.nvim_call_function('system', {
-    --         "curl -Ls https://api.github.com/repos/particle-iot/device-os/tags"
-    --     })
-    --
-    --     -- parse json response if there was one
-    --     local json = nil
-    --     if #result ~= 0 then
-    --         json = vim.json.decode(result)
-    --     end
-    --
-    --     -- Curl failed due to network or no tag results in the curl
-    --     -- expecting 30 tags by default
-    --     if #result == 0 or json[1] == nil then
-    --         versions[1] = 'Failed to curl tags from https://api.github.com/repos/particle-iot/device-os/tags'
-    --     else
-    --         versions = {}
-    --         for i=1, #json do
-    --             versions[i] = json[i]["name"]
-    --             tarballUrls[i] = json[i]["zipball_url"]
-    --         end
-    --         versions_loaded = true
-    --     end
-    -- end
-
-
     -- TODO: figure out better check for installation, maybe a file I create?
     for i=1, #versions do
         local file = toolchainFolder .. versions[i]
@@ -210,8 +185,6 @@ local function updateView()
         end
     end
 
-
-
     -- api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, versions)
     api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, myLines)
 
@@ -220,25 +193,36 @@ local function updateView()
     state = 1
 end
 
-local function loadPlatforms()
+local function loadParticleManifest()
     local file = io.open(particleManifestPath, "r")
     if not file then return end
-    local manifestJson = file:read("*a")
+    local txt = file:read("*a")
     file:close()
 
-    local json = vim.json.decode(manifestJson)
-    -- utils.printTable(manifestJson)
-    for i = 1, #json["platforms"] do
-        local id = json["platforms"][i]["id"]
-        platforms[id] = json["platforms"][i]["name"]
+    particleManifest = vim.json.decode(txt)
+
+    -- Load the platform mappings id:name
+    for i = 1, #particleManifest["platforms"] do
+        local id = particleManifest["platforms"][i]["id"]
+        platforms[id] = particleManifest["platforms"][i]["name"]
     end
 
-    for i = 1, #json["toolchains"] do
-        local version = json["toolchains"][i]["firmware"]
-        version = string.match(version, "@(.*)")
-        versions[i] = version
+    -- Load the device os versions
+    for i = 1, #particleManifest["toolchains"] do
+        local version = particleManifest["toolchains"][i]["firmware"]
+        versions[i] = string.match(version, "@(.*)")
     end
+end
 
+local function getFirmwareBinaryUrl(version)
+    -- local url = particleBinariesUrl .. version .. ".tar.gz"
+    for i = 1, #particleManifest["firmware"] do
+        local manifestVersion = particleManifest["firmware"][i]["version"]
+        if manifestVersion == version then
+            return particleManifest["firmware"][i]["url"]
+        end
+    end
+    return nil
 end
 
 local function loadReleaseBody()
@@ -280,7 +264,9 @@ local function installRelease()
 
     -- Ignore lines that do not have a version (blank or header)
     if #version == 0 then return end
-    if(string.lower(string.sub(version, 1, 1)) ~= 'v') then return end
+    if not string.match(version, "%d+%.%d+%.%d+") then
+        return
+    end
 
     local index = 0
     for i = 1, #versions do
@@ -302,9 +288,12 @@ local function installRelease()
         return
     end
 
-    -- local url = tarballUrls[index]
+    local url = getFirmwareBinaryUrl(version)
+    if not url then
+        print("Failed to find binary url for version " .. version)
+        return
+    end
 
-    local url = particleBinariesUrl .. version .. ".tar.gz"
     local tarfile = toolchainFolder .. version .. ".tar.gz"
 
     local cmd = "wget -cO - " .. url .. " > " .. tarfile
@@ -544,7 +533,7 @@ local function particle()
     if state ~= 0 then return end
     openWindow()
     findParticleManifest()
-    loadPlatforms()
+    loadParticleManifest()
     setMappings()
     updateView()
     api.nvim_win_set_cursor(win, {cursorStart, 0})
