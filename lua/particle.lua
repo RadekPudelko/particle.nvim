@@ -2,6 +2,14 @@ local utils = require "utils"
 local api = vim.api
 local buf, win
 
+-- check vscode extension version
+--curl -X POST -H 'Accept: application/json; charset=utf-8; api-version=7.2-preview.1' -H 'Content-Type: application/json' -d '{"filters": [{"criteria": [{"filterType": 7, "value": "particle.particle-vscode-core"}]}], "flags": 512}' https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery
+---- with asset urls
+--curl -X POST -H 'Accept: application/json; charset=utf-8; api-version=7.2-preview.1' -H 'Content-Type: application/json' -d '{"filters": [{"criteria": [{"filterType": 7, "value": "particle.particle-vscode-core"}]}], "flags": 514}' https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery
+
+-- 1 way to get versions
+--https://api.particle.io/v1/device-os/versions?access_token=
+
 -- A few places to pull particle platforms from
 -- toolchain modules folder
 ---- probably not this one, since the names dont match up with actual platforms
@@ -23,12 +31,27 @@ local buf, win
 --- should compare if there is a difference in compiled binaries if using git vs binaries.particle.io
 
 
+-- Pull changelog from git curl -L https://raw.githubusercontent.com/particle-iot/device-os/develop/CHANGELOG.md
+-- use -I flag to get size info so only update the file when it updates
+--
+-- get os version from https://api.particle.io/v1/build_targets?
 
+--another spot to get partcile device constants: https://www.npmjs.com/package/@particle/device-constants/v/3.3.0?activeTab=code
 -- where the toolchains will be installed
+--
+-- To download particle vscode extension
+-- curl https://particle.gallery.vsassets.io/_apis/public/gallery/publisher/particle/extension/particle-vscode-core/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage -o particle.tar.gz
+--
+--
+-- find the manifestjson file
+--find . -name manifest.json  | grep toolchain-manager
+--find ~/.vscode/extensions -name manifest.json  | grep toolchain-manager
+local vscodePath = "~/.vscode/extensions/"
+local particleManifestPath
+
 local CC_PATH = "~/.particle/toolchains/gcc-arm/10.2.1/bin/arm-none-eabi-gcc"
 local toolchainFolder = "./toolchains/"
 -- local toolchainFolder = "~/.particle/toolchains/"
-local manifestFile = "./manifest.json"
 
 local particleBinariesUrl = "https://binaries.particle.io/device-os/"
 -- line in the buffer where data is loaded, along with top of what user can reach
@@ -50,12 +73,12 @@ local platforms = {}
 local job_id = 0
 local startTime
 
+
 local function center(str)
     local width = api.nvim_win_get_width(0)
     local shift = math.floor(width / 2) - math.floor(string.len(str) / 2)
     return string.rep(' ', shift) .. str
 end
-
 
 local function openWindow()
     print("job running: " .. job_id)
@@ -111,33 +134,49 @@ local function openWindow()
     -- api.nvim_buf_add_highlight(buf, -1, 'WhidHeader', 0, 0, -1)
 end
 
+-- Find the Particle's manifest file from within their toolchain package in the
+-- particle workbench core vscode extension
+-- Used to load particle platforms, ids, device os versions and more
+local function findParticleManifest()
+    local result = api.nvim_call_function('systemlist', {
+        "find " .. vscodePath .. " -name manifest.json | grep toolchain-manager"
+    })
+    if #result == 0 then
+        print("Failed to find particle manifest")
+    elseif #result > 1 then
+        print("Found multiple particle manifests")
+    end
+    particleManifestPath = result[1]
+    print("Using particle manifset from " .. result[1])
+end
+
 local function updateView()
     api.nvim_buf_set_option(buf, 'modifiable', true)
 
-    if not versions_loaded then
-        local result = api.nvim_call_function('system', {
-            "curl -Ls https://api.github.com/repos/particle-iot/device-os/tags"
-        })
-
-        -- parse json response if there was one
-        local json = nil
-        if #result ~= 0 then
-            json = vim.json.decode(result)
-        end
-
-        -- Curl failed due to network or no tag results in the curl
-        -- expecting 30 tags by default
-        if #result == 0 or json[1] == nil then
-            versions[1] = 'Failed to curl tags from https://api.github.com/repos/particle-iot/device-os/tags'
-        else
-            versions = {}
-            for i=1, #json do
-                versions[i] = json[i]["name"]
-                tarballUrls[i] = json[i]["zipball_url"]
-            end
-            versions_loaded = true
-        end
-    end
+    -- if not versions_loaded then
+    --     local result = api.nvim_call_function('system', {
+    --         "curl -Ls https://api.github.com/repos/particle-iot/device-os/tags"
+    --     })
+    --
+    --     -- parse json response if there was one
+    --     local json = nil
+    --     if #result ~= 0 then
+    --         json = vim.json.decode(result)
+    --     end
+    --
+    --     -- Curl failed due to network or no tag results in the curl
+    --     -- expecting 30 tags by default
+    --     if #result == 0 or json[1] == nil then
+    --         versions[1] = 'Failed to curl tags from https://api.github.com/repos/particle-iot/device-os/tags'
+    --     else
+    --         versions = {}
+    --         for i=1, #json do
+    --             versions[i] = json[i]["name"]
+    --             tarballUrls[i] = json[i]["zipball_url"]
+    --         end
+    --         versions_loaded = true
+    --     end
+    -- end
 
 
     -- TODO: figure out better check for installation, maybe a file I create?
@@ -182,17 +221,24 @@ local function updateView()
 end
 
 local function loadPlatforms()
-    local file = io.open(manifestFile, "r")
+    local file = io.open(particleManifestPath, "r")
     if not file then return end
-    local manifestText = file:read("*a")
+    local manifestJson = file:read("*a")
     file:close()
 
-    platforms = {}
-    local json = vim.json.decode(manifestText)
+    local json = vim.json.decode(manifestJson)
+    -- utils.printTable(manifestJson)
     for i = 1, #json["platforms"] do
         local id = json["platforms"][i]["id"]
         platforms[id] = json["platforms"][i]["name"]
     end
+
+    for i = 1, #json["toolchains"] do
+        local version = json["toolchains"][i]["firmware"]
+        version = string.match(version, "@(.*)")
+        versions[i] = version
+    end
+
 end
 
 local function loadReleaseBody()
@@ -374,12 +420,12 @@ local function deviceOSView()
     local toolchainManifest = toolchainFolder .. version .. "/.workbench/manifest.json"
     local file = io.open(toolchainManifest, "r")
     if not file then return end
-    local manifestText = file:read("*a")
+    local manifestJson = file:read("*a")
     file:close()
 
     -- TODO: Set up some sort of test or checks here to make sure the file format is as
     -- we expect it to be
-    local json = vim.json.decode(manifestText)
+    local json = vim.json.decode(manifestJson)
     local toolchainPlatformIds = json["toolchains"][1]["platforms"]
 
     -- TODO: The line setting is not working correctly
@@ -432,7 +478,7 @@ local function deviceOSCompile()
     if not isValidPlatform then return end
 
     local toolchainModules = toolchainFolder .. selectedVersion .. "/modules"
-    local command = {"bear", "--", "make", "clean", "all", "PLATFORM=" .. currentLineText}
+    local command = {"bear", "--", "make", "clean", "all", "-s", "PLATFORM=" .. currentLineText}
     local job_options = {
         cwd = toolchainModules,
         env = {CC=CC_PATH},
@@ -497,6 +543,7 @@ end
 local function particle()
     if state ~= 0 then return end
     openWindow()
+    findParticleManifest()
     loadPlatforms()
     setMappings()
     updateView()
@@ -513,6 +560,7 @@ return {
     uninstallRelease = uninstallRelease,
     deviceOSView = deviceOSView,
     deviceOSCompile = deviceOSCompile,
-    asyncTest = asyncTest
+    asyncTest = asyncTest,
+    findParticleManifest = findParticleManifest
 }
 
