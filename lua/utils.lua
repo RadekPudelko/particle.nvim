@@ -66,5 +66,19 @@ function M.isSemanticVersion(version)
     return true
 end
 
+-- synchronous shell command executation using vim.system()
+function M.run(command)
+    local obj = vim.system(command, {text = true}):wait()
+    if obj.code ~= 0 then
+        local cmd = table.concat(command, " ")
+        print("error in command: " .. cmd)
+        print("code " .. obj.code)
+        print("stdout " .. obj.stdout)
+        print("stderr " .. obj.stderr)
+        return false
+    end
+    return true
+end
+
 return M
 

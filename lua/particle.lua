@@ -183,6 +183,8 @@ local function loadReleaseBody()
     state = 2
 end
 
+
+
 -- May need to determine what the folder will be called by string building
 -- or use tar command to rename the top level folder during decompression
 -- TODO: Probably convert this to somesort of job that runs a call back to update the main view at the end of installation
@@ -223,32 +225,16 @@ local function installRelease()
 
     local tarfile = toolchainFolder .. version .. ".tar.gz"
 
-    local cmd = "wget -cO - " .. url .. " > " .. tarfile
-    print(cmd)
-    local result = api.nvim_call_function('system', {
-        cmd
-    })
-    -- print(result)
+    if not utils.run({'curl', '-o', tarfile, url}) then return end
 
     if not utils.exists(tarfile) then
         print("Failed to download file from url: " .. url)
         return
     end
 
-    -- TODO: check if the downloaded file exists
-    result = api.nvim_call_function('system', {
-        "mkdir " .. file
-    })
-
-    local cmd = "tar -xf " .. tarfile .. " -C " .. file .. " --strip-components 1"
-    print(cmd)
-    result = api.nvim_call_function('system', {
-        cmd
-    })
-
-    result = api.nvim_call_function('system', {
-        'rm ' .. tarfile
-    })
+    if not utils.run({'mkdir', file}) then return end
+    if not utils.run({'tar', '-xf', tarfile, '-C', file, '--strip-components', 1}) then return end
+    if not utils.run({'rm', tarfile}) then return end
 
     updateView()
 end
