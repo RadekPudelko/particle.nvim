@@ -193,6 +193,16 @@ local function loadReleaseBody()
     state = 2
 end
 
+
+local function isSemanticVersion(version)
+    if #version == 0 then return false end
+    if not string.match(version, "%d+%.%d+%.%d+") then
+        return false
+    end
+    return true
+end
+
+
 -- May need to determine what the folder will be called by string building
 -- or use tar command to rename the top level folder during decompression
 -- TODO: Probably convert this to somesort of job that runs a call back to update the main view at the end of installation
@@ -203,10 +213,7 @@ local function installRelease()
     local version = vim.fn.getline(curLineNum)
 
     -- Ignore lines that do not have a version (blank or header)
-    if #version == 0 then return end
-    if not string.match(version, "%d+%.%d+%.%d+") then
-        return
-    end
+    if not isSemanticVersion(version) then return end
 
     local index = 0
     for i = 1, #versions do
@@ -273,8 +280,7 @@ local function uninstallRelease()
     local version = vim.fn.getline(curLineNum)
 
     -- Ignore lines that do not have a version (blank or header)
-    if #version == 0 then return end
-    if(string.lower(string.sub(version, 1, 1)) ~= 'v') then return end
+    if not isSemanticVersion(version) then return end
 
     local index = 0
     for i = 1, #versions do
