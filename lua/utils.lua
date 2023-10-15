@@ -35,6 +35,16 @@ function M.printTable(t)
     end
 end
 
+-- Reads the entire file
+function M.readfile(path)
+    local file = io.open(path, "r")
+    if not file then return end
+
+    local txt = file:read("*a")
+    file:close()
+    return txt
+end
+
 -- True if a file or folder exists at path
 function M.exists(path)
     local ok, err, code = os.rename(path, path)

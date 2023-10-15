@@ -1,5 +1,6 @@
 local utils = require "utils"
 local manifest = require "manifest"
+local firmware = require "firmware"
 local api = vim.api
 local buf, win
 
@@ -40,6 +41,7 @@ local buf, win
 
 local CC_PATH = "~/.particle/toolchains/gcc-arm/10.2.1/bin/arm-none-eabi-gcc"
 local toolchainFolder = "./toolchains/"
+
 -- local toolchainFolder = "~/.particle/toolchains/"
 
 local particleBinariesUrl = "https://binaries.particle.io/device-os/"
@@ -173,28 +175,13 @@ local function loadReleaseBody()
     local version = vim.fn.getline(curLineNum)
     if not utils.isSemanticVersion(version) then return end
 
-    local cmd = "curl -Ls https://api.github.com/repos/particle-iot/device-os/releases/tags/v" .. version
-    local result = api.nvim_call_function('system', {
-        cmd
-    })
-
-    local json = vim.json.decode(result)
-    local body = json["body"]
-    local lines = {}
-    for s in body:gmatch("[^\r\n]+") do
-        table.insert(lines, s)
-    end
-
-    api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, lines)
+    local changelog = firmware.getDeviceOSChanges(version)
+    api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, vim.split(changelog, '\n'))
     api.nvim_set_option_value('filetype', 'markdown', {['buf']=buf})
-    -- api.nvim_set_option_value('startofline', true, {['win']=win})
-    -- api.nvim_set_option_value('wrap', true, {['buf']=buf})
+
     api.nvim_buf_set_option(buf, 'modifiable', false)
     state = 2
 end
-
-
-
 
 -- May need to determine what the folder will be called by string building
 -- or use tar command to rename the top level folder during decompression
@@ -326,8 +313,7 @@ local function deviceOSView()
     local version = vim.fn.getline(curLineNum)
 
     -- Ignore lines that do not have a version (blank or header)
-    if #version == 0 then return end
-    if(string.lower(string.sub(version, 1, 1)) ~= 'v') then return end
+    if not utils.isSemanticVersion(version) then return end
 
     local index = 0
     for i = 1, #versions do
@@ -472,8 +458,8 @@ local function setup()
     manifest.setup()
     platforms = manifest.getPlatforms()
     versions = manifest.getFirmwareVersions()
+    firmware.setup(toolchainFolder)
 end
-
 
 local function particle()
     if state ~= 0 then return end
