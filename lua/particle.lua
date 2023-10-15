@@ -1,11 +1,7 @@
 local utils = require "utils"
+local manifest = require "manifest"
 local api = vim.api
 local buf, win
-
--- check vscode extension version
---curl -X POST -H 'Accept: application/json; charset=utf-8; api-version=7.2-preview.1' -H 'Content-Type: application/json' -d '{"filters": [{"criteria": [{"filterType": 7, "value": "particle.particle-vscode-core"}]}], "flags": 512}' https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery
----- with asset urls
---curl -X POST -H 'Accept: application/json; charset=utf-8; api-version=7.2-preview.1' -H 'Content-Type: application/json' -d '{"filters": [{"criteria": [{"filterType": 7, "value": "particle.particle-vscode-core"}]}], "flags": 514}' https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery
 
 -- 1 way to get versions
 --https://api.particle.io/v1/device-os/versions?access_token=
@@ -39,15 +35,8 @@ local buf, win
 --another spot to get partcile device constants: https://www.npmjs.com/package/@particle/device-constants/v/3.3.0?activeTab=code
 -- where the toolchains will be installed
 --
--- To download particle vscode extension
--- curl https://particle.gallery.vsassets.io/_apis/public/gallery/publisher/particle/extension/particle-vscode-core/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage -o particle.tar.gz
 --
 --
--- find the manifestjson file
---find . -name manifest.json  | grep toolchain-manager
---find ~/.vscode/extensions -name manifest.json  | grep toolchain-manager
-local vscodePath = "~/.vscode/extensions/"
-local particleManifestPath
 
 local CC_PATH = "~/.particle/toolchains/gcc-arm/10.2.1/bin/arm-none-eabi-gcc"
 local toolchainFolder = "./toolchains/"
@@ -67,7 +56,6 @@ local versions_loaded = false
 local selectedVersion
 
 -- Contents of Particle's manifest json file
-local particleManifest
 local versions = {}
 local platforms = {}
 
@@ -135,22 +123,6 @@ local function openWindow()
     -- api.nvim_buf_add_highlight(buf, -1, 'WhidHeader', 0, 0, -1)
 end
 
--- Find the Particle's manifest file from within their toolchain package in the
--- particle workbench core vscode extension
--- Used to load particle platforms, ids, device os versions and more
-local function findParticleManifest()
-    local result = api.nvim_call_function('systemlist', {
-        "find " .. vscodePath .. " -name manifest.json | grep toolchain-manager"
-    })
-    if #result == 0 then
-        print("Failed to find particle manifest")
-    elseif #result > 1 then
-        print("Found multiple particle manifests")
-    end
-    particleManifestPath = result[1]
-    print("Using particle manifset from " .. result[1])
-end
-
 local function updateView()
     api.nvim_buf_set_option(buf, 'modifiable', true)
 
@@ -191,38 +163,6 @@ local function updateView()
     -- api.nvim_buf_add_highlight(buf, -1, 'particleSubHeader', 1, 0, -1)
     api.nvim_buf_set_option(buf, 'modifiable', false)
     state = 1
-end
-
-local function loadParticleManifest()
-    local file = io.open(particleManifestPath, "r")
-    if not file then return end
-    local txt = file:read("*a")
-    file:close()
-
-    particleManifest = vim.json.decode(txt)
-
-    -- Load the platform mappings id:name
-    for i = 1, #particleManifest["platforms"] do
-        local id = particleManifest["platforms"][i]["id"]
-        platforms[id] = particleManifest["platforms"][i]["name"]
-    end
-
-    -- Load the device os versions
-    for i = 1, #particleManifest["toolchains"] do
-        local version = particleManifest["toolchains"][i]["firmware"]
-        versions[i] = string.match(version, "@(.*)")
-    end
-end
-
-local function getFirmwareBinaryUrl(version)
-    -- local url = particleBinariesUrl .. version .. ".tar.gz"
-    for i = 1, #particleManifest["firmware"] do
-        local manifestVersion = particleManifest["firmware"][i]["version"]
-        if manifestVersion == version then
-            return particleManifest["firmware"][i]["url"]
-        end
-    end
-    return nil
 end
 
 local function loadReleaseBody()
@@ -288,7 +228,7 @@ local function installRelease()
         return
     end
 
-    local url = getFirmwareBinaryUrl(version)
+    local url = manifest.getFirmwareBinaryUrl(version)
     if not url then
         print("Failed to find binary url for version " .. version)
         return
@@ -529,11 +469,17 @@ local function setMappings()
         -- end
 end
 
+local function setup()
+    manifest.setup()
+    platforms = manifest.getPlatforms()
+    versions = manifest.getFirmwareVersions()
+end
+
+
 local function particle()
     if state ~= 0 then return end
     openWindow()
-    findParticleManifest()
-    loadParticleManifest()
+    setup()
     setMappings()
     updateView()
     api.nvim_win_set_cursor(win, {cursorStart, 0})
@@ -550,6 +496,5 @@ return {
     deviceOSView = deviceOSView,
     deviceOSCompile = deviceOSCompile,
     asyncTest = asyncTest,
-    findParticleManifest = findParticleManifest
 }
 
