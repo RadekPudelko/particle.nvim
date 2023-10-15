@@ -1,4 +1,6 @@
-local function printTable(t)
+local M = {}
+
+function M.printTable(t)
     local printTable_cache = {}
 
     local function sub_printTable(t, indent)
@@ -23,7 +25,7 @@ local function printTable(t)
             end
         end
     end
- 
+
     if(type(t) == "table" ) then
         print(tostring(t) .. " {")
         sub_printTable(t, "  ")
@@ -34,7 +36,7 @@ local function printTable(t)
 end
 
 -- True if a file or folder exists at path
-local function exists(path)
+function M.exists(path)
     local ok, err, code = os.rename(path, path)
     if not ok then
         if code == 13 then
@@ -46,8 +48,13 @@ local function exists(path)
     return true
 end
 
-return {
-    printTable = printTable,
-    exists = exists
-}
+function M.isSemanticVersion(version)
+    if #version == 0 then return false end
+    if not string.match(version, "%d+%.%d+%.%d+") then
+        return false
+    end
+    return true
+end
+
+return M
 

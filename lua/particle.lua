@@ -62,7 +62,6 @@ local platforms = {}
 local job_id = 0
 local startTime
 
-
 local function center(str)
     local width = api.nvim_win_get_width(0)
     local shift = math.floor(width / 2) - math.floor(string.len(str) / 2)
@@ -172,10 +171,11 @@ local function loadReleaseBody()
 
     local curLineNum = vim.fn.getcurpos()[2];
     local version = vim.fn.getline(curLineNum)
-    if #version == 0 then return end
+    if not utils.isSemanticVersion(version) then return end
 
+    local cmd = "curl -Ls https://api.github.com/repos/particle-iot/device-os/releases/tags/v" .. version
     local result = api.nvim_call_function('system', {
-        "curl -Ls https://api.github.com/repos/particle-iot/device-os/releases/tags/"..version
+        cmd
     })
 
     local json = vim.json.decode(result)
@@ -194,13 +194,6 @@ local function loadReleaseBody()
 end
 
 
-local function isSemanticVersion(version)
-    if #version == 0 then return false end
-    if not string.match(version, "%d+%.%d+%.%d+") then
-        return false
-    end
-    return true
-end
 
 
 -- May need to determine what the folder will be called by string building
@@ -213,7 +206,7 @@ local function installRelease()
     local version = vim.fn.getline(curLineNum)
 
     -- Ignore lines that do not have a version (blank or header)
-    if not isSemanticVersion(version) then return end
+    if not utils.isSemanticVersion(version) then return end
 
     local index = 0
     for i = 1, #versions do
@@ -280,7 +273,7 @@ local function uninstallRelease()
     local version = vim.fn.getline(curLineNum)
 
     -- Ignore lines that do not have a version (blank or header)
-    if not isSemanticVersion(version) then return end
+    if not utils.isSemanticVersion(version) then return end
 
     local index = 0
     for i = 1, #versions do
