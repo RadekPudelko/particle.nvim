@@ -64,6 +64,8 @@ local platforms = {}
 local job_id = 0
 local startTime
 
+local namespace
+
 local function center(str)
     local width = api.nvim_win_get_width(0)
     local shift = math.floor(width / 2) - math.floor(string.len(str) / 2)
@@ -225,8 +227,50 @@ local function installRelease()
 
     local tarfile = toolchainFolder .. version .. ".tar.gz"
 
+    -- api.nvim_set_option_value('signcolumn', 'no', {['buf']=buf})
+    local progress = {
+        source = 'your_source_name',  -- Replace with your source name
+        code = 'your_error_code',     -- Replace with your error code
+        line = curLineNum,
+        lnum = curLineNum - 1,
+        end_lnum = curLineNum - 1,
+        col = 0,
+        end_col = 0,
+        -- range = {start = {line = curLineNum - 1, character = 0}, ["end"] = {line = curLineNum - 1, character = 0}},
+        severity = vim.diagnostic.severity.HINT, -- Or vim.diagnostic.severity.WARN, vim.diagnostic.severity.INFO
+        message = "Your diagnostic message here",  -- Replace with your message
+    }
+
+    -- vim.diagnostic.set(namespace, buf, {progress});
+    vim.diagnostic.set(
+    namespace,
+    buf,
+    vim.tbl_map(function(diagnostic)
+        return {
+            lnum = diagnostic.line - 1,
+            col = 0,
+            message = diagnostic.message,
+            severity = diagnostic.severity,
+            source = diagnostic.source,
+        }
+    end, {progress}),
+    {
+        signs = false,
+    })
+
+    -- vim.diagnostic.show(namespace, buf, {progress})
+
+    -- api.nvim_buf_reload(buf)
+    -- vim.api.nvim_command('e')
+    -- print("downloading")
+    -- api.nvim_buf_set_option(buf, 'modifiable', true)
+    -- local currentBuffer = vim.api.nvim_get_current_buf()
+    -- local lines = vim.api.nvim_buf_get_lines(currentBuffer, 0, -1, false)
+    -- vim.api.nvim_buf_set_lines(currentBuffer, 0, -1, false, lines)
+    -- api.nvim_buf_set_option(buf, 'modifiable', false)
     if not utils.run({'curl', '-o', tarfile, url}) then return end
 
+    print("downloaded")
     if not utils.exists(tarfile) then
         print("Failed to download file from url: " .. url)
         return
@@ -407,6 +451,37 @@ local function moveCursor()
     api.nvim_win_set_cursor(win, {new_pos, 0})
 end
 
+local function diagnosticTest()
+    local curLineNum = vim.fn.getcurpos()[2];
+    local progress = {
+        source = 'your_source_name',  -- Replace with your source name
+        code = 'your_error_code',     -- Replace with your error code
+        lnum = curLineNum - 1,
+        end_lnum = curLineNum - 1,
+        col = 0,
+        end_col = 0,
+        -- range = {start = {line = curLineNum - 1, character = 0}, ["end"] = {line = curLineNum - 1, character = 0}},
+        severity = vim.diagnostic.severity.HINT, -- Or vim.diagnostic.severity.WARN, vim.diagnostic.severity.INFO
+        message = "Your diagnostic message here",  -- Replace with your message
+    }
+
+    vim.diagnostic.show(namespace, buf, {progress});
+
+    -- vim.diagnostic.set(namespace, buf, {progress})
+    -- vim.tbl_map(function(diagnostic)
+    --     return {
+    --         lnum = diagnostic.line - 1,
+    --         col = 0,
+    --         message = diagnostic.message,
+    --         severity = diagnostic.severity,
+    --         source = diagnostic.source,
+    --     }
+    -- end, {progress}),
+    -- {
+    --     signs = false,
+    -- })
+end
+
 local function setMappings()
     local mappings = {
         ['<cr>'] = 'loadReleaseBody()',
@@ -420,6 +495,7 @@ local function setMappings()
         X = 'uninstallRelease()',
         c = 'deviceOSView()',
         m = 'deviceOSCompile()',
+        d = 'diagnosticTest()'
         -- a = 'asyncTest()'
     }
 
@@ -441,10 +517,22 @@ local function setMappings()
 end
 
 local function setup()
+    namespace = api.nvim_create_namespace("particle.nvim")
     manifest.setup()
     platforms = manifest.getPlatforms()
     versions = manifest.getFirmwareVersions()
     firmware.setup(toolchainFolder)
+
+    -- vim.diagnostic.config({signs = false})
+    vim.diagnostic.config({
+        virtual_text = {
+            severity = { min = vim.diagnostic.severity.HINT, max = vim.diagnostic.severity.ERROR },
+        },
+        right_align = false,
+        underline = false,
+        signs = false,
+        virtual_lines = false,
+    }, namespace)
 end
 
 local function particle()
@@ -467,5 +555,6 @@ return {
     deviceOSView = deviceOSView,
     deviceOSCompile = deviceOSCompile,
     asyncTest = asyncTest,
+    diagnosticTest = diagnosticTest
 }
 
