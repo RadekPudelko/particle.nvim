@@ -4,11 +4,13 @@ local firmware = require "firmware"
 local api = vim.api
 local buf, win
 
+-- Particle debug mode
+
 -- 1 way to get versions
 --https://api.particle.io/v1/device-os/versions?access_token=
 
 -- A few places to pull particle platforms from
--- toolchain modules folder
+-- toolchain modules contents
 ---- probably not this one, since the names dont match up with actual platforms
 -- toolchain build/platform.mk
 ---- akward to parse
@@ -35,9 +37,6 @@ local buf, win
 
 --another spot to get partcile device constants: https://www.npmjs.com/package/@particle/device-constants/v/3.3.0?activeTab=code
 -- where the toolchains will be installed
---
---
---
 
 local CC_PATH = "~/.particle/toolchains/gcc-arm/10.2.1/bin/arm-none-eabi-gcc"
 local toolchainFolder = "./toolchains/"
@@ -185,16 +184,27 @@ local function loadReleaseBody()
     state = 2
 end
 
+local function createDiagnostic(line, message)
+    return {
+        source = 'particle.nvim',
+        code = '0',
+        lnum = line - 1,
+        end_lnum = line - 1,
+        col = 0,
+        end_col = 0,
+        severity = vim.diagnostic.severity.INFO,
+        message = message
+    }
+end
 
-
--- May need to determine what the folder will be called by string building
--- or use tar command to rename the top level folder during decompression
+-- May need to determine what the contents will be called by string building
+-- or use tar command to rename the top level contents during decompression
 -- TODO: Probably convert this to somesort of job that runs a call back to update the main view at the end of installation
 local function installRelease()
     if state ~= 1 then return end
 
-    local curLineNum = vim.fn.getcurpos()[2];
-    local version = vim.fn.getline(curLineNum)
+    local line = vim.fn.getcurpos()[2];
+    local version = vim.fn.getline(line)
 
     -- Ignore lines that do not have a version (blank or header)
     if not utils.isSemanticVersion(version) then return end
@@ -206,18 +216,11 @@ local function installRelease()
            break
        end
     end
-
-    if index == 0 then
-        -- Should never happen
+    if index == 0 then -- Should never happen
         print("Unable to find " .. version)
         return
     end
-
-    local file = toolchainFolder .. version
-    if isInstalled[index] then
-        print(version .. " is already installed at " .. file)
-        return
-    end
+    if isInstalled[index] then return end
 
     local url = manifest.getFirmwareBinaryUrl(version)
     if not url then
@@ -225,62 +228,69 @@ local function installRelease()
         return
     end
 
-    local tarfile = toolchainFolder .. version .. ".tar.gz"
+    -- TODO: Decide what to do when there is a error, show it somehow?
+    -- This will download and extract the device os
+    local thread = coroutine.create(function()
+        local thread = coroutine.running()
+        local progress = createDiagnostic(line, "Downloading " .. version)
+        vim.diagnostic.show(namespace, buf, {progress});
 
-    -- api.nvim_set_option_value('signcolumn', 'no', {['buf']=buf})
-    local progress = {
-        source = 'your_source_name',  -- Replace with your source name
-        code = 'your_error_code',     -- Replace with your error code
-        line = curLineNum,
-        lnum = curLineNum - 1,
-        end_lnum = curLineNum - 1,
-        col = 0,
-        end_col = 0,
-        -- range = {start = {line = curLineNum - 1, character = 0}, ["end"] = {line = curLineNum - 1, character = 0}},
-        severity = vim.diagnostic.severity.HINT, -- Or vim.diagnostic.severity.WARN, vim.diagnostic.severity.INFO
-        message = "Your diagnostic message here",  -- Replace with your message
-    }
+        -- compressed device os binary downloaded here
+        local tarfile = toolchainFolder .. version .. ".tar.gz"
+        -- Device os extracted here (folder)
+        local contents = toolchainFolder .. version
 
-    -- vim.diagnostic.set(namespace, buf, {progress});
-    vim.diagnostic.set(
-    namespace,
-    buf,
-    vim.tbl_map(function(diagnostic)
-        return {
-            lnum = diagnostic.line - 1,
-            col = 0,
-            message = diagnostic.message,
-            severity = diagnostic.severity,
-            source = diagnostic.source,
-        }
-    end, {progress}),
-    {
-        signs = false,
-    })
+        local command = {'curl', '-o', tarfile, url}
+        local jobId = vim.fn.jobstart(command, {
+            on_exit = function(_, code)
+                if code ~= 0 then
+                    local cmd = table.concat(command, " ")
+                    print("Command " .. cmd .. " exited with code " .. code)
+                    return
+                end
+                coroutine.resume(thread)
+            end,
+        })
 
-    -- vim.diagnostic.show(namespace, buf, {progress})
+        if jobId < 0 then
+            print("Failed to start job")
+            return
+        end
+        coroutine.yield()
 
-    -- api.nvim_buf_reload(buf)
-    -- vim.api.nvim_command('e')
-    -- print("downloading")
-    -- api.nvim_buf_set_option(buf, 'modifiable', true)
-    -- local currentBuffer = vim.api.nvim_get_current_buf()
-    -- local lines = vim.api.nvim_buf_get_lines(currentBuffer, 0, -1, false)
-    -- vim.api.nvim_buf_set_lines(currentBuffer, 0, -1, false, lines)
-    -- api.nvim_buf_set_option(buf, 'modifiable', false)
-    if not utils.run({'curl', '-o', tarfile, url}) then return end
+        if not utils.exists(tarfile) then
+            print("Failed to download file from url: " .. url)
+            return
+        end
 
-    print("downloaded")
-    if not utils.exists(tarfile) then
-        print("Failed to download file from url: " .. url)
-        return
-    end
+        progress = createDiagnostic(line, "Installing " .. version)
+        vim.diagnostic.show(namespace, buf, {progress});
 
-    if not utils.run({'mkdir', file}) then return end
-    if not utils.run({'tar', '-xf', tarfile, '-C', file, '--strip-components', 1}) then return end
-    if not utils.run({'rm', tarfile}) then return end
+        if not utils.run({'mkdir', contents}) then return end
 
-    updateView()
+        command = {'tar', '-xf', tarfile, '-C', contents, '--strip-components', 1}
+        jobId = vim.fn.jobstart(command, {
+            on_exit = function(_, code)
+                if code ~= 0 then
+                    local cmd = table.concat(command, " ")
+                    print("Command " .. cmd .. " exited with code " .. code)
+                    return
+                end
+                coroutine.resume(thread)
+            end,
+        })
+
+        if jobId < 0 then
+            print("Failed to start job")
+            return
+        end
+
+        coroutine.yield()
+        if not utils.run({'rm', tarfile}) then return end
+        vim.diagnostic.hide(namespace, buf)
+        updateView()
+    end)
+    coroutine.resume(thread)
 end
 
 local function uninstallRelease()
@@ -397,11 +407,6 @@ local function deviceOSView()
     -- utils.printTable(json["platforms"])
 end
 
--- there is an option to make stdout/err buffered, so that its is handled all at once
-local function asyncTest(command, cwd, envVars)
-    -- Define job options
-end
-
 -- This job will die if neovim is closed, but not if the plugin is closed
 local function deviceOSCompile()
     if state ~= 3 then return end
@@ -496,7 +501,6 @@ local function setMappings()
         c = 'deviceOSView()',
         m = 'deviceOSCompile()',
         d = 'diagnosticTest()'
-        -- a = 'asyncTest()'
     }
 
     for k,v in pairs(mappings) do
@@ -554,7 +558,6 @@ return {
     uninstallRelease = uninstallRelease,
     deviceOSView = deviceOSView,
     deviceOSCompile = deviceOSCompile,
-    asyncTest = asyncTest,
     diagnosticTest = diagnosticTest
 }
 

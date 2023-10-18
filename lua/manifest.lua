@@ -10,7 +10,7 @@ local api = vim.api
 
 local M = {}
 
-local vscodePath = "~/.vscode/extensions/"
+local vscodePath = "~/.vscode/extensions"
 
 local manifest
 
