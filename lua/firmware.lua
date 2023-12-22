@@ -19,13 +19,15 @@ function M.setup(path)
     deviceOSChangelogPath = path .. "CHANGELOG.md"
 
     -- Want to replace these api calls with something that will give me an error
-    -- code
     local cmd = "curl -Ls https://raw.githubusercontent.com/particle-iot/device-os/develop/CHANGELOG.md -o " .. deviceOSChangelogPath
+    -- TODO: How do I get an error message out of these?
+    -- This fails if the deviceOSChangelogPath doesn't exist
     local result = api.nvim_call_function('system', {
         cmd
     })
 
     if not utils.exists(deviceOSChangelogPath) then
+        print(cmd)
         print("Failed to download Changlog")
     end
 

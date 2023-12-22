@@ -66,6 +66,14 @@ function M.isSemanticVersion(version)
     return true
 end
 
+function M.parseSemanticVersion(version)
+    if #version == 0 then return false end
+    local maj, min, pat = string.match(version, "(%d+)%.(%d+)%.(%d+)")
+    if maj and min and pat then
+        return {major=maj, minor=min, patch=pat}
+    end
+end
+
 -- synchronous shell command executation using vim.system()
 function M.run(command)
     local obj = vim.system(command, {text = true}):wait()

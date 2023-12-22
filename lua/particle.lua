@@ -1,8 +1,13 @@
 local utils = require "utils"
 local manifest = require "manifest"
 local firmware = require "firmware"
+local tc = require "toolchain"
+local ui = require "ui"
 local api = vim.api
 local buf, win
+
+-- Mason makes an additional header array above installed when updating
+
 
 -- Particle debug mode
 
@@ -65,11 +70,18 @@ local startTime
 
 local namespace
 
+local nodes = {}
+
+local function getNodeAtCursor()
+    return vim.fn.getcurpos()[2] - cursorStart + 1
+end
+
 local function center(str)
     local width = api.nvim_win_get_width(0)
     local shift = math.floor(width / 2) - math.floor(string.len(str) / 2)
     return string.rep(' ', shift) .. str
 end
+
 
 local function openWindow()
     print("job running: " .. job_id)
@@ -128,60 +140,84 @@ end
 local function updateView()
     api.nvim_buf_set_option(buf, 'modifiable', true)
 
-    -- TODO: figure out better check for installation, maybe a file I create?
-    for i=1, #versions do
-        local file = toolchainFolder .. versions[i]
-        -- TODO: figure out possible errs and how to handle
-        local exists, err = utils.exists(file)
-        -- print("err ".. err)
-        isInstalled[i] = exists
-    end
+    isInstalled = tc.isInstalled(versions)
+    nodes = {}
 
-    local myLines = {}
-    myLines[1] = "## Installed"
-    local line = 2
+    local node = ui.Node("## Installed", "na")
+    table.insert(nodes, node)
     for i=1, #versions do
-        if(isInstalled[i]) then
-            myLines[line] = versions[i]
-            line = line + 1
+        if(isInstalled[versions[i]]) then
+            node = ui.Node(versions[i], "deviceOSVersion")
+            table.insert(nodes, node)
         end
     end
 
-    myLines[line] = ""
-    line = line + 1
+    node = ui.Node("", "na")
+    table.insert(nodes, node)
+    node = ui.Node("## Available", "na")
+    table.insert(nodes, node)
 
-    myLines[line] = "## Available"
-    line = line + 1
+    local majors = {}
     for i=1, #versions do
-        if(not isInstalled[i]) then
-            myLines[line] = versions[i]
-            line = line + 1
+        if(not isInstalled[versions[i]]) then
+            local major = utils.parseSemanticVersion(versions[i])["major"]
+            if not majors[major] then
+                majors[major] = 1
+                node = ui.Node(major .. ".X.X", "deviceOSBranch")
+                table.insert(nodes, node)
+            end
         end
     end
 
-    -- api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, versions)
-    api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, myLines)
+    local lines = ui.renderNodes(nodes)
 
+    api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, lines)
     -- api.nvim_buf_add_highlight(buf, -1, 'particleSubHeader', 1, 0, -1)
     api.nvim_buf_set_option(buf, 'modifiable', false)
     state = 1
 end
 
-local function loadReleaseBody()
+
+local function handleCR()
     if state ~= 1 then return end
+    local nodeIndex = getNodeAtCursor()
 
+    -- utils.printTable(nodes)
+    local node = nodes[nodeIndex]
     api.nvim_buf_set_option(buf, 'modifiable', true)
-
-    local curLineNum = vim.fn.getcurpos()[2];
-    local version = vim.fn.getline(curLineNum)
-    if not utils.isSemanticVersion(version) then return end
-
-    local changelog = firmware.getDeviceOSChanges(version)
-    api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, vim.split(changelog, '\n'))
-    api.nvim_set_option_value('filetype', 'markdown', {['buf']=buf})
+    if node["type"] == "deviceOSVersion" or node["type"] == "deviceOSBranchVersion" then
+        -- Handle #.#.# lines (get changelog)
+        local changelog = firmware.getDeviceOSChanges(node["line"])
+        api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, vim.split(changelog, '\n'))
+        state = 2
+    elseif node["type"] == "deviceOSBranch" then
+        -- Handle #.X.X lines (expand/collapse)
+        if(node["collapsed"]) then
+            node["collapsed"] = false
+            local major = string.match(node["line"], "(%d+)%.X.X")
+            local branch = tc.getDeviceOSBranch(versions, major)
+            for i = #branch, 1, -1 do
+                if not isInstalled[branch[i]] then
+                    local branchNode = ui.Node(branch[i], "deviceOSBranchVersion")
+                    table.insert(nodes, nodeIndex + 1, branchNode)
+                end
+            end
+        else
+            node["collapsed"] = true
+            -- Iterate from start of branch upto last node or first non branch node
+            for i = nodeIndex + 1, #nodes do
+                if nodes[nodeIndex + 1].type ~= "deviceOSBranchVersion" then
+                    break
+                end
+                table.remove(nodes, nodeIndex + 1)
+            end
+        end
+        local lines = ui.renderNodes(nodes)
+        api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, lines)
+    end
 
     api.nvim_buf_set_option(buf, 'modifiable', false)
-    state = 2
+
 end
 
 local function createDiagnostic(line, message)
@@ -220,7 +256,7 @@ local function installRelease()
         print("Unable to find " .. version)
         return
     end
-    if isInstalled[index] then return end
+    if isInstalled[version] then return end
 
     local url = manifest.getFirmwareBinaryUrl(version)
     if not url then
@@ -316,7 +352,7 @@ local function uninstallRelease()
         return
     end
 
-    if not isInstalled[index] then
+    if not isInstalled[version] then
         print("Not installed")
         return
     end
@@ -339,7 +375,7 @@ local function uninstallRelease()
 
     if not utils.exists(file) then
         -- print(version .. " was successfully removed")
-        isInstalled[index] = false
+        isInstalled[version] = false
         updateView()
     else
         -- print("Failed to remove " .. file)
@@ -369,7 +405,7 @@ local function deviceOSView()
         return
     end
 
-    if not isInstalled[index] then return end
+    if not isInstalled[version] then return end
 
     local toolchainManifest = toolchainFolder .. version .. "/.workbench/manifest.json"
     local file = io.open(toolchainManifest, "r")
@@ -489,7 +525,7 @@ end
 
 local function setMappings()
     local mappings = {
-        ['<cr>'] = 'loadReleaseBody()',
+        ['<cr>'] = 'handleCR()',
 
         -- hl are restricting movement in the buffers
         h = 'updateView()',
@@ -552,7 +588,7 @@ return {
     particle = particle,
     updateView = updateView,
     moveCursor = moveCursor,
-    loadReleaseBody = loadReleaseBody,
+    handleCR = handleCR,
     closeWindow = closeWindow,
     installRelease = installRelease,
     uninstallRelease = uninstallRelease,
