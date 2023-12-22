@@ -177,6 +177,14 @@ local function updateView()
     state = 1
 end
 
+local function restorePreviousView()
+    api.nvim_buf_set_option(buf, 'modifiable', true)
+    local lines = ui.renderNodes(nodes)
+    api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, lines)
+    api.nvim_buf_set_option(buf, 'modifiable', false)
+    state = 1
+end
+
 
 local function handleCR()
     if state ~= 1 then return end
@@ -527,9 +535,7 @@ local function setMappings()
     local mappings = {
         ['<cr>'] = 'handleCR()',
 
-        -- hl are restricting movement in the buffers
-        h = 'updateView()',
-        l = 'updateView()',
+        o = 'restorePreviousView()',
         q = 'closeWindow()',
         k = 'moveCursor()',
         i = 'installRelease()',
@@ -547,13 +553,13 @@ local function setMappings()
 
     -- these are currently restricting what can be done in the buffer, no gg for instance
     -- local other_chars = {
-        --   'a', 'b', 'c', 'd', 'e', 'f', 'g', 'i', 'n', 'o', 'p', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-        -- }
-        -- for k,v in ipairs(other_chars) do
-        --   api.nvim_buf_set_keymap(buf, 'n', v, '', { nowait = true, noremap = true, silent = true })
-        --   api.nvim_buf_set_keymap(buf, 'n', v:upper(), '', { nowait = true, noremap = true, silent = true })
-        --   api.nvim_buf_set_keymap(buf, 'n',  '<c-'..v..'>', '', { nowait = true, noremap = true, silent = true })
-        -- end
+    --       'a', 'b', 'c', 'd', 'e', 'f', 'g', 'i', 'n', 'o', 'p', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+    --     }
+    --     for k,v in ipairs(other_chars) do
+    --       api.nvim_buf_set_keymap(buf, 'n', v, '', { nowait = true, noremap = true, silent = true })
+    --       api.nvim_buf_set_keymap(buf, 'n', v:upper(), '', { nowait = true, noremap = true, silent = true })
+    --       api.nvim_buf_set_keymap(buf, 'n',  '<c-'..v..'>', '', { nowait = true, noremap = true, silent = true })
+    --     end
 end
 
 local function setup()
@@ -587,6 +593,7 @@ end
 return {
     particle = particle,
     updateView = updateView,
+    restorePreviousView = restorePreviousView,
     moveCursor = moveCursor,
     handleCR = handleCR,
     closeWindow = closeWindow,
