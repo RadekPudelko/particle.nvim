@@ -35,6 +35,24 @@ function M.printTable(t)
     end
 end
 
+-- Recursivly searches for a file starting at cwd and working up to root
+-- Returns path or nill
+-- Only good for file, not directories
+function M.findFile(file)
+    local current_dir = vim.fn.getcwd()
+
+    while current_dir ~= "/" do
+        local project_file = current_dir .. "/" .. file
+        if vim.fn.filereadable(project_file) == 1 then
+            return project_file
+        end
+
+        current_dir = vim.fn.fnamemodify(current_dir, ":h")
+    end
+
+    return nil  -- Not found
+end
+
 -- Reads the entire file
 function M.readfile(path)
     local file = io.open(path, "r")

@@ -30,7 +30,7 @@ local buf, win
 -- TODO: github tarballs/zipballs do not contain submodules, so need to find a way
 -- to download full device os
 --- See how particle does it
---- Could use git to do it, git clone, checkout, init submodules 
+--- Could use git to do it, git clone, checkout, init submodules
 --- particle uses https://binaries.particle.io/device-os/v5.5.0.tar.gz
 --- should compare if there is a difference in compiled binaries if using git vs binaries.particle.io
 
@@ -71,6 +71,11 @@ local startTime
 local namespace
 
 local nodes = {}
+
+-- These get loaded with the project.properties and particle.nvim.json paths if they
+-- exist, otherwise they are falsy
+local particlePropertiesPath
+local particleSettingsPath
 
 local function getNodeAtCursor()
     return vim.fn.getcurpos()[2] - cursorStart + 1
@@ -137,6 +142,44 @@ local function openWindow()
     -- api.nvim_buf_add_highlight(buf, -1, 'WhidHeader', 0, 0, -1)
 end
 
+local function loadInitialView()
+    api.nvim_buf_set_option(buf, 'modifiable', true)
+    local lines = {}
+    -- Are we in a particle project
+    if particlePropertiesPath then
+        if particleSettingsPath then
+            lines = {"particle project with particle.nvim.json"}
+                local file = io.open(particleSettingsPath, "r")
+                if not file then
+                    lines = {"Unable to load particle.nvim.json"}
+                end
+                local settings = file:read("*a")
+                file:close()
+                -- TODO: Set up some sort of test or checks here to make sure the file format is as
+                -- we expect it to be
+
+                local json = vim.json.decode(settings)
+                lines = {
+                    "plartform: " .. json["platform"],
+                    "firmware version: " .. json["firmware_version"],
+                }
+                -- local toolchainPlatformIds = json["toolchains"][1]["platforms"]
+                -- utils.printTable(lines)
+
+
+        else
+            lines = {"particle project without particle.nvim.json"}
+        end
+    else
+        lines = {"no project.properties found"}
+    end
+
+    api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, lines)
+    -- api.nvim_buf_add_highlight(buf, -1, 'particleSubHeader', 1, 0, -1)
+    api.nvim_buf_set_option(buf, 'modifiable', false)
+    state = 1
+end
+
 local function updateView()
     api.nvim_buf_set_option(buf, 'modifiable', true)
 
@@ -174,7 +217,7 @@ local function updateView()
     api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, lines)
     -- api.nvim_buf_add_highlight(buf, -1, 'particleSubHeader', 1, 0, -1)
     api.nvim_buf_set_option(buf, 'modifiable', false)
-    state = 1
+    state = 2
 end
 
 local function restorePreviousView()
@@ -182,12 +225,21 @@ local function restorePreviousView()
     local lines = ui.renderNodes(nodes)
     api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, lines)
     api.nvim_buf_set_option(buf, 'modifiable', false)
-    state = 1
+    state = 2
 end
 
 
 local function handleCR()
-    if state ~= 1 then return end
+    if state == 1 then
+        -- Create Particle project
+        if not particlePropertiesPath then
+            return
+        end
+        -- Create Particle settings json
+
+    end
+
+    if state ~= 2 then return end
     local nodeIndex = getNodeAtCursor()
 
     -- utils.printTable(nodes)
@@ -197,7 +249,7 @@ local function handleCR()
         -- Handle #.#.# lines (get changelog)
         local changelog = firmware.getDeviceOSChanges(node["line"])
         api.nvim_buf_set_lines(buf, cursorStart - 1, -1, false, vim.split(changelog, '\n'))
-        state = 2
+        state = 3
     elseif node["type"] == "deviceOSBranch" then
         -- Handle #.X.X lines (expand/collapse)
         if(node["collapsed"]) then
@@ -245,7 +297,7 @@ end
 -- or use tar command to rename the top level contents during decompression
 -- TODO: Probably convert this to somesort of job that runs a call back to update the main view at the end of installation
 local function installRelease()
-    if state ~= 1 then return end
+    if state ~= 2 then return end
 
     local line = vim.fn.getcurpos()[2];
     local version = vim.fn.getline(line)
@@ -338,7 +390,7 @@ local function installRelease()
 end
 
 local function uninstallRelease()
-    if state ~= 1 then return end
+    if state ~= 2 then return end
 
     local curLineNum = vim.fn.getcurpos()[2];
     local version = vim.fn.getline(curLineNum)
@@ -391,7 +443,7 @@ local function uninstallRelease()
 end
 
 local function deviceOSView()
-    if state ~= 1 then return end
+    if state ~= 2 then return end
 
     local curLineNum = vim.fn.getcurpos()[2];
     local version = vim.fn.getline(curLineNum)
@@ -569,6 +621,9 @@ local function setup()
     versions = manifest.getFirmwareVersions()
     firmware.setup(toolchainFolder)
 
+    particlePropertiesPath = utils.findFile("project.properties")
+    particleSettingsPath = utils.findFile("particle.nvim.json")
+
     -- vim.diagnostic.config({signs = false})
     vim.diagnostic.config({
         virtual_text = {
@@ -586,12 +641,14 @@ local function particle()
     openWindow()
     setup()
     setMappings()
-    updateView()
+    loadInitialView()
+    -- updateView()
     api.nvim_win_set_cursor(win, {cursorStart, 0})
 end
 
 return {
     particle = particle,
+    loadInitialView = loadInitialView,
     updateView = updateView,
     restorePreviousView = restorePreviousView,
     moveCursor = moveCursor,
