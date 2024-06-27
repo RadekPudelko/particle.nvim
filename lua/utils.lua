@@ -43,6 +43,7 @@ function M.findFile(file)
 
     while current_dir ~= "/" do
         local project_file = current_dir .. "/" .. file
+    print("look for " .. project_file)
         if vim.fn.filereadable(project_file) == 1 then
             return project_file
         end

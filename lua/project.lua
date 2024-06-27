@@ -1,89 +1,14 @@
 local Menu = require("nui.menu")
 local utils = require "utils"
 local Manifest = require("manifest")
-
-local ProjectSettingsFile = ".particle.nvim.json"
-local DeviceOSDirectory = vim.fn.expand("~/.particle/toolchains/deviceOS")
+local Settings = require("settings")
+local Installed = require("installed")
 
 local settings = nil
 
-local function getInstalledDeviceOS(path)
-  local osList = {}
-
-  local handle = vim.loop.fs_scandir(path)
-  if not handle then
-    print("Failed to scan directory: " .. path)
-    return osList
-  end
-
-  while true do
-    local name, type = vim.loop.fs_scandir_next(handle)
-    if not name then break end
-    -- TODO: add another check to confirm its a device osList
-    if type == "directory" and utils.isSemanticVersion(name) then
-      table.insert(osList, name)
-    end
-  end
-  -- TODO: sort by latest
-
-  return osList
-end
-
-local function defaultProjectSettings()
-  local settings = {
-    ["device_os"] = "6.1.0",
-    ["platform"] = "bsom"
-  }
-  return settings
-end
-
-local function loadProjectJson()
-  local path = utils.findFile(ProjectSettingsFile)
-  if not path then
-    return nil, ProjectSettingsFile .. " not found"
-  end
-
-  local file = io.open(path, "r")
-  if not file then
-    return nil, "Unable to read " .. ProjectSettingsFile
-  end
-
-  local contents = file:read("*a")
-  file:close()
-  -- TODO: Set up some sort of test or checks here to make sure the file format is as
-  -- we expect it to be
-  local json = vim.json.decode(contents)
-  return json, nil
-end
-
-local function saveProjectJson(settings)
-  local json = vim.json.encode(settings)
-  vim.fn.writefile({json}, ProjectSettingsFile)
-end
-
-local function isParticleProject()
-  local path = utils.findFile("project.properties")
-  return path ~= nil
-end
-
-local function checkForConfig()
-  local path = utils.findFile(ProjectSettingsFile)
-  return path ~= nil
-end
-
-local function getMaxKeyLen(dict)
-  local max = 0
-  for key, _ in pairs(dict) do
-    if #key > max then
-      max = #key
-    end
-  end
-  return max
-end
-
 function CreateDeviceOSMenu()
   local lines = {}
-  local installedOSList = getInstalledDeviceOS(DeviceOSDirectory)
+  local installedOSList = Installed.getAllDeviceOS()
   for _, os in ipairs(installedOSList) do
     table.insert(lines, Menu.item(os))
   end
@@ -120,7 +45,7 @@ function CreateDeviceOSMenu()
       on_submit = function(item)
         print("Device OS Submitted: ", item.text)
         settings["device_os"] = item.text
-        saveProjectJson(settings)
+        Settings.save(settings)
         LoadSettings()
         CreateMainMenu()
       end,
@@ -190,7 +115,7 @@ function CreatePlatformMenu()
       on_submit = function(item)
         print("Platform Submitted: ", item.text)
         settings["platform"] = item.text
-        saveProjectJson(settings)
+        Settings.save(settings)
         LoadSettings()
         CreateMainMenu()
       end,
@@ -240,7 +165,7 @@ function CreateMainMenu()
       end,
       on_submit = function(item)
         if item.text == "Create config" then
-          saveProjectJson(defaultProjectSettings())
+          Settings.save(Settings.default())
           LoadSettings()
           CreateMainMenu()
         elseif string.find(item.text, "Device OS:") then
@@ -258,17 +183,18 @@ end
 
 function LoadSettings()
   settings = nil
-  local err
-  if checkForConfig() then
+  if Settings.exists() then
     -- TODO: Validate all settings json fields are present/valid
-    settings, err = loadProjectJson()
-    if err ~= nil then
-      print(err)
+    settings = Settings.load()
+    if settings == nil then
+      print("Failed to load settings")
     end
+  else
+    print("Settings dont exist")
   end
 end
 
--- local configExists = checkForConfig()
+-- local configExists = Settings.exists()
 Manifest.setup()
 LoadSettings()
 CreateMainMenu()
