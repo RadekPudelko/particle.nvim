@@ -18,6 +18,7 @@ local manifest
 -- particle workbench core vscode extension
 -- Used to load particle platforms, ids, device os versions and more
 local function findParticleManifest(path)
+  -- TODO: convert to be OS agnostic
     local result = api.nvim_call_function('systemlist', {
         "find " .. path .. " -name manifest.json | grep toolchain-manager"
     })
@@ -45,7 +46,6 @@ end
 function M.setup()
     local path = findParticleManifest(vscodePath)
     manifest = loadParticleManifest(path)
-
 end
 
 function M.getPlatforms()
@@ -55,6 +55,29 @@ function M.getPlatforms()
         platforms[id] = manifest["platforms"][i]["name"]
     end
     return platforms
+end
+
+-- "platforms": [
+--     12,
+--     13,
+--     15,
+--     23,
+--     25,
+--     26
+-- ],
+-- "firmware": "deviceOS@6.1.0",
+-- "compilers": "gcc-arm@10.2.1",
+-- "tools": "buildtools@1.1.1",
+-- "scripts": "buildscripts@1.15.0",
+-- "debuggers": "openocd@0.11.0-particle.4",
+function M.getToolchain(version)
+  for i = 1, #manifest["toolchains"] do
+    local firmware = manifest["toolchains"][i]["firmware"]
+    local desiredVersionString = "deviceOS@" .. version
+    if firmware == desiredVersionString then
+      return manifest["toolchains"][i]
+    end
+  end
 end
 
 function M.getFirmwareVersions()
