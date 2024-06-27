@@ -106,5 +106,25 @@ function M.run(command)
     return true
 end
 
+function M.scanDirectory(path, cb)
+  -- TODO: return errors
+  local list = {}
+
+  local handle = vim.loop.fs_scandir(path)
+  if not handle then
+    print("Failed to scanDirectory directory: " .. path)
+    return list
+  end
+
+  while true do
+    local name, type = vim.loop.fs_scandir_next(handle)
+    if not name then break end
+    if cb(name, type) then
+      table.insert(list, name)
+    end
+  end
+  return list
+end
+
 return M
 

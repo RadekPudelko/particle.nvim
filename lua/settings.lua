@@ -36,7 +36,8 @@ end
 function M.default()
   local settings = {
     ["device_os"] = "6.1.0",
-    ["platform"] = "bsom"
+    ["platform"] = "bsom",
+    ["compiler"] = "10.2.1"
   }
   return settings
 end

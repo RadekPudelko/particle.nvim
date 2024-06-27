@@ -6,10 +6,58 @@ local Installed = require("installed")
 
 local settings = nil
 
+--TODO: add indicator of selected items in menu
+
+function CreateCompilerMenu()
+  local lines = {}
+
+  local list = Installed.getCompilers()
+  for _, os in ipairs(list) do
+    table.insert(lines, Menu.item(os))
+  end
+
+  local menu = Menu({
+    position = "50%",
+    size = {
+      width = 25,
+      height = 5,
+    },
+    border = {
+      style = "single",
+      text = {
+        top = "Particle.nvim - Compiler",
+        top_align = "center",
+      },
+    },
+    win_options = {
+      winhighlight = "Normal:Normal,FloatBorder:Normal",
+    },
+  }, {
+      lines = lines,
+      max_width = 20,
+      keymap = {
+        focus_next = { "j", "<Down>", "<Tab>" },
+        focus_prev = { "k", "<Up>", "<S-Tab>" },
+        close = { "q", "<Esc>", "<C-c>" },
+        submit = { "<CR>", "<Space>" },
+      },
+      on_close = function()
+        CreateMainMenu()
+      end,
+      on_submit = function(item)
+        settings["compiler"] = item.text
+        Settings.save(settings)
+        LoadSettings()
+        CreateMainMenu()
+      end,
+    })
+  menu:mount()
+end
+
 function CreateDeviceOSMenu()
   local lines = {}
-  local installedOSList = Installed.getAllDeviceOS()
-  for _, os in ipairs(installedOSList) do
+  local list = Installed.getAllDeviceOS()
+  for _, os in ipairs(list) do
     table.insert(lines, Menu.item(os))
   end
 
@@ -70,18 +118,9 @@ function CreatePlatformMenu()
 
   local lines = {}
   local platformMap = Manifest.getPlatforms()
-  -- print(platformMap)
   for _, platformId in ipairs(toolchain["platforms"]) do
-    -- print("pid " .. platformId .. " " .. platformMap[platformId])
     table.insert(lines, Menu.item(platformMap[platformId]))
   end
-
-
-  -- local lines = {Menu.item("bsom"), Menu.item("msom")}
-  -- local installedOSList = getInstalledDeviceOS(DeviceOSDirectory)
-  -- for _, osList in ipairs(installedOSList) do
-  --   table.insert(lines, Menu.item(osList))
-  -- end
 
   local menu = Menu({
     position = "50%",
@@ -130,7 +169,8 @@ function CreateMainMenu()
   else
     lines = {
       Menu.item("Device OS: " .. settings["device_os"]),
-      Menu.item("Platform: " .. settings["platform"])
+      Menu.item("Platform: " .. settings["platform"]),
+      Menu.item("Compiler: " .. settings["compiler"])
     }
   end
 
@@ -161,7 +201,6 @@ function CreateMainMenu()
         -- submit = { },
       },
       on_close = function()
-        print("Menu Closed!")
       end,
       on_submit = function(item)
         if item.text == "Create config" then
@@ -169,11 +208,11 @@ function CreateMainMenu()
           LoadSettings()
           CreateMainMenu()
         elseif string.find(item.text, "Device OS:") then
-          print("Menu Submitted: ", item.text)
           CreateDeviceOSMenu()
-        else
-          print("Menu Submitted: ", item.text)
+        elseif string.find(item.text, "Platform:") then
           CreatePlatformMenu()
+        else
+          CreateCompilerMenu()
         end
       end,
     })
