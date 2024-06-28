@@ -16,8 +16,8 @@ local function CreateMenu(title, lines, on_close, on_submit)
   local menu = Menu({
     position = "50%",
     size = {
-      width = 25,
-      height = 5,
+      width = 40,
+      height = 10,
     },
     border = {
       style = "single",
@@ -52,7 +52,8 @@ function CreateMainMenu()
     lines = {
       Menu.item("Device OS: " .. settings["device_os"]),
       Menu.item("Platform: " .. settings["platform"]),
-      Menu.item("Compiler: " .. settings["compiler"])
+      Menu.item("Compiler: " .. settings["compiler"]),
+      Menu.item("Build Script: " .. settings["scripts"])
     }
   end
 
@@ -67,8 +68,10 @@ function CreateMainMenu()
       CreateDeviceOSMenu()
     elseif string.find(item.text, "Platform:") then
       CreatePlatformMenu()
-    else
+    elseif string.find(item.text, "Compiler:") then
       CreateCompilerMenu()
+    else
+      CreateBuildScriptMenu()
     end
   end
 
@@ -77,7 +80,7 @@ end
 
 function CreateDeviceOSMenu()
   local lines = {}
-  local list = Installed.getAllDeviceOS()
+  local list = Installed.getDeviceOSs()
   for _, os in ipairs(list) do
     table.insert(lines, Menu.item(os))
   end
@@ -144,6 +147,25 @@ function CreateCompilerMenu()
   end
 
   CreateMenu("Particle.nvim - Compiler", lines, on_close, on_submit)
+end
+
+function CreateBuildScriptMenu()
+  local lines = {}
+  local list = Installed.getBuildScripts()
+  for _, os in ipairs(list) do
+    table.insert(lines, Menu.item(os))
+  end
+
+  local on_close = function() CreateMainMenu() end
+
+  local on_submit = function(item)
+    settings["scripts"] = item.text
+    Settings.save(settings)
+    LoadSettings()
+    CreateMainMenu()
+  end
+
+  CreateMenu("Particle.nvim - Build Script", lines, on_close, on_submit)
 end
 
 

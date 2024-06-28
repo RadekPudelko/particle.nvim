@@ -33,11 +33,13 @@ function M.load()
   return vim.json.decode(contents)
 end
 
+-- TODO: these defaults need to be generated according to whats installed locally or blank
 function M.default()
   local settings = {
     ["device_os"] = "6.1.0",
     ["platform"] = "bsom",
-    ["compiler"] = "10.2.1"
+    ["compiler"] = "10.2.1",
+    ["scripts"] = "1.15.0"
   }
   return settings
 end
