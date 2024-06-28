@@ -7,13 +7,10 @@ local Installed = require("installed")
 local settings = nil
 
 --TODO: add indicator of selected items in menu
-
-function CreateCompilerMenu()
-  local lines = {}
-
-  local list = Installed.getCompilers()
-  for _, os in ipairs(list) do
-    table.insert(lines, Menu.item(os))
+local function CreateMenu(title, lines, on_close, on_submit)
+  local items = {}
+  for _, item in ipairs(lines) do
+    table.insert(items, Menu.item(item))
   end
 
   local menu = Menu({
@@ -25,7 +22,7 @@ function CreateCompilerMenu()
     border = {
       style = "single",
       text = {
-        top = "Particle.nvim - Compiler",
+        top = title,
         top_align = "center",
       },
     },
@@ -33,7 +30,7 @@ function CreateCompilerMenu()
       winhighlight = "Normal:Normal,FloatBorder:Normal",
     },
   }, {
-      lines = lines,
+      lines = items,
       max_width = 20,
       keymap = {
         focus_next = { "j", "<Down>", "<Tab>" },
@@ -41,17 +38,29 @@ function CreateCompilerMenu()
         close = { "q", "<Esc>", "<C-c>" },
         submit = { "<CR>", "<Space>" },
       },
-      on_close = function()
-        CreateMainMenu()
-      end,
-      on_submit = function(item)
-        settings["compiler"] = item.text
-        Settings.save(settings)
-        LoadSettings()
-        CreateMainMenu()
-      end,
+      on_close = on_close,
+      on_submit = on_submit,
     })
   menu:mount()
+end
+
+function CreateCompilerMenu()
+  local lines = {}
+  local list = Installed.getCompilers()
+  for _, os in ipairs(list) do
+    table.insert(lines, Menu.item(os))
+  end
+
+  local on_close = function() CreateMainMenu() end
+
+  local on_submit = function(item)
+    settings["compiler"] = item.text
+    Settings.save(settings)
+    LoadSettings()
+    CreateMainMenu()
+  end
+
+  CreateMenu("Particle.nvim - Compiler", lines, on_close, on_submit)
 end
 
 function CreateDeviceOSMenu()
@@ -61,44 +70,16 @@ function CreateDeviceOSMenu()
     table.insert(lines, Menu.item(os))
   end
 
-  local menu = Menu({
-    position = "50%",
-    size = {
-      width = 25,
-      height = 5,
-    },
-    border = {
-      style = "single",
-      text = {
-        top = "Particle.nvim - Device OS",
-        top_align = "center",
-      },
-    },
-    win_options = {
-      winhighlight = "Normal:Normal,FloatBorder:Normal",
-    },
-  }, {
-      lines = lines,
-      max_width = 20,
-      keymap = {
-        focus_next = { "j", "<Down>", "<Tab>" },
-        focus_prev = { "k", "<Up>", "<S-Tab>" },
-        close = { "q", "<Esc>", "<C-c>" },
-        submit = { "<CR>", "<Space>" },
-      },
-      on_close = function()
-        print("Menu Closed!")
-        CreateMainMenu()
-      end,
-      on_submit = function(item)
-        print("Device OS Submitted: ", item.text)
-        settings["device_os"] = item.text
-        Settings.save(settings)
-        LoadSettings()
-        CreateMainMenu()
-      end,
-    })
-  menu:mount()
+  local on_close = function() CreateMainMenu() end
+
+  local on_submit = function(item)
+    settings["device_os"] = item.text
+    Settings.save(settings)
+    LoadSettings()
+    CreateMainMenu()
+  end
+
+  CreateMenu("Particle.nvim - Device OS", lines, on_close, on_submit)
 end
 
 -- TODO: how to handle which device os to show and which platforms to show
@@ -122,44 +103,16 @@ function CreatePlatformMenu()
     table.insert(lines, Menu.item(platformMap[platformId]))
   end
 
-  local menu = Menu({
-    position = "50%",
-    size = {
-      width = 25,
-      height = 5,
-    },
-    border = {
-      style = "single",
-      text = {
-        top = "Particle.nvim - Platform",
-        top_align = "center",
-      },
-    },
-    win_options = {
-      winhighlight = "Normal:Normal,FloatBorder:Normal",
-    },
-  }, {
-      lines = lines,
-      max_width = 20,
-      keymap = {
-        focus_next = { "j", "<Down>", "<Tab>" },
-        focus_prev = { "k", "<Up>", "<S-Tab>" },
-        close = { "q", "<Esc>", "<C-c>" },
-        submit = { "<CR>", "<Space>" },
-      },
-      on_close = function()
-        print("Menu Closed!")
-        CreateMainMenu()
-      end,
-      on_submit = function(item)
-        print("Platform Submitted: ", item.text)
-        settings["platform"] = item.text
-        Settings.save(settings)
-        LoadSettings()
-        CreateMainMenu()
-      end,
-    })
-  menu:mount()
+  local on_close = function() CreateMainMenu() end
+
+  local on_submit = function(item)
+    settings["platform"] = item.text
+    Settings.save(settings)
+    LoadSettings()
+    CreateMainMenu()
+  end
+
+  CreateMenu("Particle.nvim - Platform", lines, on_close, on_submit)
 end
 
 function CreateMainMenu()
@@ -174,50 +127,23 @@ function CreateMainMenu()
     }
   end
 
-  local menu = Menu({
-    position = "50%",
-    size = {
-      width = 25,
-      height = 5,
-    },
-    border = {
-      style = "single",
-      text = {
-        top = "Particle.nvim",
-        top_align = "center",
-      },
-    },
-    win_options = {
-      winhighlight = "Normal:Normal,FloatBorder:Normal",
-    }},
-    {
-      lines = lines,
-      max_width = 20,
-      keymap = {
-        focus_next = { "j", "<Down>", "<Tab>" },
-        focus_prev = { "k", "<Up>", "<S-Tab>" },
-        close = { "q", "<Esc>", "<C-c>" },
-        submit = { "<CR>", "<Space>" },
-        -- submit = { },
-      },
-      on_close = function()
-      end,
-      on_submit = function(item)
-        if item.text == "Create config" then
-          Settings.save(Settings.default())
-          LoadSettings()
-          CreateMainMenu()
-        elseif string.find(item.text, "Device OS:") then
-          CreateDeviceOSMenu()
-        elseif string.find(item.text, "Platform:") then
-          CreatePlatformMenu()
-        else
-          CreateCompilerMenu()
-        end
-      end,
-    })
+  local on_close = function() end
 
-  menu:mount()
+  local on_submit = function(item)
+    if item.text == "Create config" then
+      Settings.save(Settings.default())
+      LoadSettings()
+      CreateMainMenu()
+    elseif string.find(item.text, "Device OS:") then
+      CreateDeviceOSMenu()
+    elseif string.find(item.text, "Platform:") then
+      CreatePlatformMenu()
+    else
+      CreateCompilerMenu()
+    end
+  end
+
+  CreateMenu("Particle.nvim", lines, on_close, on_submit)
 end
 
 function LoadSettings()
