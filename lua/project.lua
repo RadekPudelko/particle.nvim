@@ -44,23 +44,35 @@ local function CreateMenu(title, lines, on_close, on_submit)
   menu:mount()
 end
 
-function CreateCompilerMenu()
+function CreateMainMenu()
   local lines = {}
-  local list = Installed.getCompilers()
-  for _, os in ipairs(list) do
-    table.insert(lines, Menu.item(os))
+  if settings == nil then
+    lines = {Menu.item("Create config")}
+  else
+    lines = {
+      Menu.item("Device OS: " .. settings["device_os"]),
+      Menu.item("Platform: " .. settings["platform"]),
+      Menu.item("Compiler: " .. settings["compiler"])
+    }
   end
 
-  local on_close = function() CreateMainMenu() end
+  local on_close = function() end
 
   local on_submit = function(item)
-    settings["compiler"] = item.text
-    Settings.save(settings)
-    LoadSettings()
-    CreateMainMenu()
+    if item.text == "Create config" then
+      Settings.save(Settings.default())
+      LoadSettings()
+      CreateMainMenu()
+    elseif string.find(item.text, "Device OS:") then
+      CreateDeviceOSMenu()
+    elseif string.find(item.text, "Platform:") then
+      CreatePlatformMenu()
+    else
+      CreateCompilerMenu()
+    end
   end
 
-  CreateMenu("Particle.nvim - Compiler", lines, on_close, on_submit)
+  CreateMenu("Particle.nvim", lines, on_close, on_submit)
 end
 
 function CreateDeviceOSMenu()
@@ -115,36 +127,25 @@ function CreatePlatformMenu()
   CreateMenu("Particle.nvim - Platform", lines, on_close, on_submit)
 end
 
-function CreateMainMenu()
+function CreateCompilerMenu()
   local lines = {}
-  if settings == nil then
-    lines = {Menu.item("Create config")}
-  else
-    lines = {
-      Menu.item("Device OS: " .. settings["device_os"]),
-      Menu.item("Platform: " .. settings["platform"]),
-      Menu.item("Compiler: " .. settings["compiler"])
-    }
+  local list = Installed.getCompilers()
+  for _, os in ipairs(list) do
+    table.insert(lines, Menu.item(os))
   end
 
-  local on_close = function() end
+  local on_close = function() CreateMainMenu() end
 
   local on_submit = function(item)
-    if item.text == "Create config" then
-      Settings.save(Settings.default())
-      LoadSettings()
-      CreateMainMenu()
-    elseif string.find(item.text, "Device OS:") then
-      CreateDeviceOSMenu()
-    elseif string.find(item.text, "Platform:") then
-      CreatePlatformMenu()
-    else
-      CreateCompilerMenu()
-    end
+    settings["compiler"] = item.text
+    Settings.save(settings)
+    LoadSettings()
+    CreateMainMenu()
   end
 
-  CreateMenu("Particle.nvim", lines, on_close, on_submit)
+  CreateMenu("Particle.nvim - Compiler", lines, on_close, on_submit)
 end
+
 
 function LoadSettings()
   settings = nil
@@ -163,4 +164,3 @@ end
 Manifest.setup()
 LoadSettings()
 CreateMainMenu()
--- mount the component
