@@ -1,10 +1,9 @@
 local utils = require("utils")
 
-local DeviceOSDirectory = vim.fn.expand("~/.particle/toolchains/deviceOS")
-local CompilerDirectory = vim.fn.expand("~/.particle/toolchains/gcc-arm")
-local BuildScriptsDirectory = vim.fn.expand("~/.particle/toolchains/buildscripts")
-
 local M = {}
+M.DeviceOSDirectory = vim.fn.expand("~/.particle/toolchains/deviceOS")
+M.CompilerDirectory = vim.fn.expand("~/.particle/toolchains/gcc-arm")
+M.BuildScriptsDirectory = vim.fn.expand("~/.particle/toolchains/buildscripts")
 
 -- TODO: handle any path
 -- function M.getAllDeviceOS(DeviceOSDirectory)
@@ -16,7 +15,7 @@ function M.getDeviceOSs()
     return false
   end
 
-  local list = utils.scanDirectory(DeviceOSDirectory, isDeviceOS)
+  local list = utils.scanDirectory(M.DeviceOSDirectory, isDeviceOS)
   -- TODO: sort by latest
 
   return list
@@ -31,7 +30,7 @@ function M.getCompilers()
     return false
   end
 
-  local list = utils.scanDirectory(CompilerDirectory, isCompiler)
+  local list = utils.scanDirectory(M.CompilerDirectory, isCompiler)
   -- TODO: sort by latest
 
   return list
@@ -46,7 +45,7 @@ function M.getBuildScripts()
     return false
   end
 
-  local list = utils.scanDirectory(BuildScriptsDirectory, isCompiler)
+  local list = utils.scanDirectory(M.BuildScriptsDirectory, isCompiler)
   -- TODO: sort by latest
 
   return list

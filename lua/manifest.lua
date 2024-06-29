@@ -12,7 +12,7 @@ local M = {}
 
 local vscodePath = "~/.vscode/extensions"
 
-local manifest
+-- local manifest
 
 -- Find the Particle's manifest file from within their toolchain package in the
 -- particle workbench core vscode extension
@@ -45,16 +45,18 @@ end
 
 function M.setup()
     local path = findParticleManifest(vscodePath)
-    manifest = loadParticleManifest(path)
+    return loadParticleManifest(path)
 end
 
-function M.getPlatforms()
-    local platforms = {}
-    for i = 1, #manifest["platforms"] do
-        local id = manifest["platforms"][i]["id"]
-        platforms[id] = manifest["platforms"][i]["name"]
-    end
-    return platforms
+function M.getPlatforms(manifest)
+  local platforms = {}
+  for i = 1, #manifest["platforms"] do
+    local id = manifest["platforms"][i]["id"]
+    local name = manifest["platforms"][i]["name"]
+    platforms[id] = name
+    platforms[name] = id
+  end
+  return platforms
 end
 
 -- "platforms": [
@@ -70,7 +72,7 @@ end
 -- "tools": "buildtools@1.1.1",
 -- "scripts": "buildscripts@1.15.0",
 -- "debuggers": "openocd@0.11.0-particle.4",
-function M.getToolchain(version)
+function M.getToolchain(manifest, version)
   for i = 1, #manifest["toolchains"] do
     local firmware = manifest["toolchains"][i]["firmware"]
     local desiredVersionString = "deviceOS@" .. version
@@ -80,7 +82,7 @@ function M.getToolchain(version)
   end
 end
 
-function M.getFirmwareVersions()
+function M.getFirmwareVersions(manifest)
     local versions = {}
     for i = 1, #manifest["toolchains"] do
         local version = manifest["toolchains"][i]["firmware"]
@@ -89,7 +91,7 @@ function M.getFirmwareVersions()
     return versions
 end
 
-function M.getFirmwareBinaryUrl(version)
+function M.getFirmwareBinaryUrl(manifest, version)
     -- local url = particleBinariesUrl .. version .. ".tar.gz"
     for i = 1, #manifest["firmware"] do
         local manifestVersion = manifest["firmware"][i]["version"]

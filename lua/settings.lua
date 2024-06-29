@@ -1,7 +1,7 @@
+local Installed = require("installed")
 local utils = require "utils"
 
 local M = {}
-
 local settingsPath = ".particle.nvim.json"
 
 function M.exists()
@@ -33,6 +33,20 @@ function M.load()
   return vim.json.decode(contents)
 end
 
+-- TODO: find particle binary using lua
+local function getParticle()
+  local result = vim.api.nvim_call_function('systemlist', {
+    "which particle"
+  })
+  if #result == 0 then
+    print("Failed to find particle binary")
+    return nil
+  elseif #result > 1 then
+    print("Found multiple particle binaries")
+  end
+  return result[1]
+end
+
 -- TODO: these defaults need to be generated according to whats installed locally or blank
 function M.default()
   local settings = {
@@ -42,6 +56,22 @@ function M.default()
     ["scripts"] = "1.15.0"
   }
   return settings
+end
+
+-- buildscript - particle makefile path
+-- particle - particle cli binary path
+-- platform_id
+-- device_os_path
+-- appdir
+function M.getParticleEnv(platforms, settings)
+  local env = {}
+  env["particle_path"] = getParticle()
+  env["buildscript_path"] = Installed.BuildScriptsDirectory .. "/" .. settings["scripts"] .. "/Makefile"
+  env["device_os_path"] = Installed.DeviceOSDirectory .. "/" .. settings["device_os"]
+  env["appdir"] = utils.GetParentPath(utils.findFile(settingsPath)) -- TODO: pass this in
+  env["platform_id"] = platforms[settings["platform"]]
+  env["compiler_path"] = Installed.CompilerDirectory .. "/" .. settings["compiler"] .. "/bin"
+  return env
 end
 
 -- local function loadProjectJson()
@@ -69,5 +99,3 @@ end
 -- end
 
 return M
-
--- lua require("settings").save()
