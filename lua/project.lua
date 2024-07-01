@@ -3,12 +3,26 @@ local utils = require("utils")
 local Manifest = require("manifest")
 local Settings = require("settings")
 local Installed = require("installed")
-local Make = require("make")
+local Commands = require("overseer_commands")
+-- local Commands = require("commands")
 
 local settings = nil
+local env = nil
 
 local M = {}
 
+--TODO: Switching platform should try to do something to fix the compile_commands.json that is
+--used by the device os. This can be done by checking if there exists a compile_commands json
+--for the specific platform for the device os and relinking it so that it is active. Otherwise, it
+--can prompt the user if it would like to compile the device os to create the compile commands.
+-- Would also have to prompt on change in devie os. IDK about change in compiler? Could use custom
+-- link names in the modules fokder than link in to the device os.
+-- This can get messy with multiple projects using hte same device os but different platforms.
+-- Maybe could merge the compile commands json file from device os and project
+-- Or could have particle.nvim supplu the correct compile commands json as the query driver arg
+-- to clangd!!
+--TODO: Need to keep track of which compile-comamnds are linked if going with a linked approach, but
+--not for a clangd supplied file via --compile-commands-dir=
 -- TODO: add a menu for additional CCFLAGs
 
 --TODO: add indicator of selected items in menu
@@ -184,6 +198,13 @@ function LoadSettings()
   else
     print("Settings dont exist")
   end
+
+  env = nil
+  local manifest = Manifest.setup()
+  local platformMap = Manifest.getPlatforms(manifest)
+  env = Settings.getParticleEnv(platformMap, settings)
+  -- utils.printTable(env)
+  -- print(envPATH)
 end
 
 local function setMappings()
@@ -195,7 +216,12 @@ function M.project()
   setMappings()
   local manifest = Manifest.setup()
   LoadSettings()
+
+  -- local compile_user = Commands.CompileUser(settings, env)
+  -- utils.printTable(compile_user)
+  -- utils.printTable({unpack(compile_user, 2)})
   CreateMainMenu(manifest)
+  Commands.setup(settings, env)
 end
 
 return M
