@@ -214,6 +214,10 @@ local function setMappings()
     { nowait=false, noremap=true, silent=true, desc = "Launch Particle.nvim local project configuration" })
 end
 
+local function get_env()
+  return settings, env
+end
+
 function M.project()
   setMappings()
   local manifest = Manifest.setup()
@@ -223,7 +227,7 @@ function M.project()
   -- utils.printTable(compile_user)
   -- utils.printTable({unpack(compile_user, 2)})
   CreateMainMenu(manifest)
-  Commands.setup(settings, env)
+  Commands.setup(get_env)
 end
 
 return M
