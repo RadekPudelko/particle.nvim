@@ -12,6 +12,18 @@ local env = nil
 
 local M = {}
 
+function M.get_project_ccjson_dir()
+  return nil
+end
+
+function M.get_device_os_ccjson_dir()
+  return nil
+end
+
+function M.get_settings()
+  return settings
+end
+
 --TODO: Switching platform should try to do something to fix the compile_commands.json that is
 --used by the device os. This can be done by checking if there exists a compile_commands json
 --for the specific platform for the device os and relinking it so that it is active. Otherwise, it
@@ -25,6 +37,11 @@ local M = {}
 --TODO: Need to keep track of which compile-comamnds are linked if going with a linked approach, but
 --not for a clangd supplied file via --compile-commands-dir=
 -- TODO: add a menu for additional CCFLAGs
+-- TODO: add way of determining whether compile-os with bear finished so that it can be restarted on boot
+-- TODO: A Clean os is not required for all platforms, only for those for which there is a shared command.
+-- Its possible to tell which have the same command via platform-ids.mk in deviceOs/build, but that doesn't
+-- necessarily tell you if you need to clean
+-- Could look at build/target folder?
 
 --TODO: add indicator of selected items in menu
 local function CreateMenu(title, lines, on_close, on_submit)
@@ -75,7 +92,6 @@ function CreateMainMenu(manifest)
       Menu.item("Compiler: " .. settings["compiler"]),
       Menu.item("Build Script: " .. settings["scripts"])
     }
-    Compile.setup_cc_json_dir(settings)
   end
 
   local on_close = function() end
@@ -222,6 +238,9 @@ function M.project()
   setMappings()
   local manifest = Manifest.setup()
   LoadSettings()
+  if settings ~= nil then
+    Compile.setup_cc_json_dir(settings)
+  end
 
   -- local compile_user = Commands.CompileUser(settings, env)
   -- utils.printTable(compile_user)

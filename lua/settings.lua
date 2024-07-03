@@ -1,4 +1,4 @@
-local Installed = require("installed")
+local Constants = require("constants")
 local utils = require "utils"
 
 local M = {}
@@ -66,11 +66,11 @@ end
 function M.getParticleEnv(platforms, settings)
   local env = {}
   env["particle_path"] = getParticle()
-  env["buildscript_path"] = Installed.BuildScriptsDirectory .. "/" .. settings["scripts"] .. "/Makefile"
-  env["device_os_path"] = Installed.DeviceOSDirectory .. "/" .. settings["device_os"]
+  env["buildscript_path"] = Constants.BuildScriptsDirectory .. "/" .. settings["scripts"] .. "/Makefile"
+  env["device_os_path"] = Constants.DeviceOSDirectory .. "/" .. settings["device_os"]
   env["appdir"] = utils.GetParentPath(utils.findFile(M.settingsPath)) -- TODO: pass this in
   env["platform_id"] = platforms[settings["platform"]]
-  env["compiler_path"] = Installed.CompilerDirectory .. "/" .. settings["compiler"] .. "/bin"
+  env["compiler_path"] = Constants.CompilerDirectory .. "/" .. settings["compiler"] .. "/bin"
   return env
 end
 
