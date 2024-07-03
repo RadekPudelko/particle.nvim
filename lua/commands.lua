@@ -1,3 +1,6 @@
+local Installed = require("installed")
+local Compile = require("compile")
+
 local M = {}
 
 local function create_make_command(make_target, settings, env)
@@ -26,19 +29,44 @@ function M.flash_user(settings, env)
   return create_make_command("flash-user", settings, env)
 end
 function M.clean_user(settings, env)
-  return create_make_command("clean-user", settings, env) .. " && rm -f compile_commands.json"
+  local parts = {}
+  table.insert(parts, "rm -f compile_commands.json")
+  table.insert(parts, "&&")
+  table.insert(parts, create_make_command("clean-user", settings, env))
+  return table.concat(parts, " ")
 end
 
--- TODO:These all commands are incomplete
--- function M.compile_all(settings, env)
---   return create_bear_command("compile_all", settings, env)
--- end
--- function M.flash_all(settings, env)
---   return create_make_command("flash_all", settings, env)
--- end
--- function M.clean_all(settings, env)
---   return create_make_command("clean_all", settings, env)
--- end
+function M.compile_os(settings, env, cc_json_path)
+  local parts = {}
+  table.insert(parts, "cd " .. Installed.DeviceOSDirectory .. "/" .. settings["device_os"])
+  table.insert(parts, "&&")
+  table.insert(parts, "bear --append --output " .. cc_json_path .. " --")
+  table.insert(parts, "make -s all")
+  table.insert(parts, "PLATFORM=" .. settings["platform"])
+  table.insert(parts, "PLATFORM_ID=" .. env["platform_id"])
+  return table.concat(parts, " ")
+end
+
+-- Assumes the ccjson dir already exists
+function M.compile_all(settings, env)
+  local parts = {}
+  table.insert(parts, M.compile_os(settings, env, Compile.get_cc_json(settings)))
+  table.insert(parts, "&&")
+  table.insert(parts, M.compile_user(settings, env))
+  return table.concat(parts, " ")
+end
+
+function M.flash_all(settings, env)
+  return create_make_command("flash-all", settings, env)
+end
+
+function M.clean_all(settings, env)
+  local parts = {}
+  table.insert(parts, "rm -f " .. Compile.get_cc_json(settings))
+  table.insert(parts, "&&")
+  table.insert(parts, create_make_command("clean-all", settings, env))
+  return table.concat(parts, " ")
+end
 
 -- function M.compile_debug(settings, env)
 --   return create_bear_append_command("compile_debug", settings, env)

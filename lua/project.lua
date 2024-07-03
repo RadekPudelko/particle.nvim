@@ -1,6 +1,7 @@
 local Menu = require("nui.menu")
 local utils = require("utils")
 local Manifest = require("manifest")
+local Compile = require("compile")
 local Settings = require("settings")
 local Installed = require("installed")
 local Commands = require("overseer_commands")
@@ -74,6 +75,7 @@ function CreateMainMenu(manifest)
       Menu.item("Compiler: " .. settings["compiler"]),
       Menu.item("Build Script: " .. settings["scripts"])
     }
+    Compile.setup_cc_json_dir(settings)
   end
 
   local on_close = function() end

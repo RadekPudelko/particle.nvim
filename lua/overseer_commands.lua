@@ -1,5 +1,6 @@
 local M = {}
 
+-- TODO: Add a precheck for some commands to ensure it is okay to run (ex no other commands running, cc_json dir exists)
 function M.setup(settings, env)
   local ENV_PATH = env["compiler_path"] .. ":" .. os.getenv("PATH")
 
@@ -27,9 +28,9 @@ function M.setup(settings, env)
   register_command("Particle Clean User", Commands.clean_user, "Particle clean-user")
 
 -- TODO:These all commands are incomplete
-  -- register_command("Particle Compile All", Commands.compile_all, "Particle compile-all")
-  -- register_command("Particle Flash All", Commands.flash_all, "Particle flash-all")
-  -- register_command("Particle Clean All", Commands.clean_all, "Particle clean-all")
+  register_command("Particle Compile All", Commands.compile_all, "Particle compile-all")
+  register_command("Particle Flash All", Commands.flash_all, "Particle flash-all")
+  register_command("Particle Clean All", Commands.clean_all, "Particle clean-all")
 
   -- register_command("Particle Compile Debug", Commands.compile_all, "Particle compile-debug")
   -- register_command("Particle Flash Debug", Commands.flash_debug, "Particle flash-debug")

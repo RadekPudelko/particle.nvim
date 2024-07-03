@@ -67,17 +67,8 @@ function M.readfile(path)
   return txt
 end
 
--- True if a file or folder exists at path
 function M.exists(path)
-  local ok, err, code = os.rename(path, path)
-  if not ok then
-    if code == 13 then
-      -- Permission denied, but directory exists
-      return true
-    end
-    return false, err
-  end
-  return true
+  return vim.loop.fs_stat(path) ~= nil
 end
 
 function M.isSemanticVersion(version)
@@ -127,6 +118,12 @@ function M.scanDirectory(path, cb)
     end
   end
   return list
+end
+
+function M.ensure_directory(path)
+    if vim.fn.isdirectory(path) == 0 then
+        vim.fn.mkdir(path, 'p')
+    end
 end
 
 return M
