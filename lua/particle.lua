@@ -20,10 +20,6 @@ M.PROJECT_LOCAL= 2
 
 -- Need functions to tell if we are in a particle project, particle device os or something else
 
--- function M.get_project_ccjson_dir()
---   return nil
--- end
-
 function M.hello()
   return "hello"
 end
@@ -178,16 +174,22 @@ function CreateMainMenu(manifest)
 end
 
 function CreateDeviceOSMenu()
+  local cur = settings["device_os"]
   local lines = {}
-  local list = Installed.getDeviceOSs()
-  for _, os in ipairs(list) do
-    table.insert(lines, Menu.item(os))
+  local versions = Installed.getDeviceOSs()
+  for _, version in ipairs(versions) do
+    if version == cur then
+      version = "*" .. version
+    end
+    table.insert(lines, Menu.item(version))
   end
 
-  local on_close = function() CreateMainMenu() end
+  local on_clversione = function() CreateMainMenu() end
 
   local on_submit = function(item)
-    settings["device_os"] = item.text
+    local sel = item.text
+    sel = string.gsub(sel, "*", "")
+    settings["device_os"] = sel
     Settings.save(settings)
     LoadSettings()
     CreateMainMenu()
@@ -205,6 +207,7 @@ function CreatePlatformMenu()
   -- Convert platforms from numbers to names
   -- Order us giidm vut consider replacing platform names with display neames as used in vscode
 
+  local cur = settings["platform"]
   local toolchain = Manifest.getToolchain(manifest, settings["device_os"])
   if toolchain == nil then
     print("Failed to find toolchain info for device os " .. settings["device_os"])
@@ -214,13 +217,19 @@ function CreatePlatformMenu()
   local lines = {}
   local platformMap = Manifest.getPlatforms(manifest)
   for _, platformId in ipairs(toolchain["platforms"]) do
-    table.insert(lines, Menu.item(platformMap[platformId]))
+    local platform = platformMap[platformId]
+    if platform == cur then
+      platform = "*" .. platform
+    end
+    table.insert(lines, Menu.item(platform))
   end
 
   local on_close = function() CreateMainMenu() end
 
   local on_submit = function(item)
-    settings["platform"] = item.text
+    local sel = item.text
+    sel = string.gsub(sel, "*", "")
+    settings["platform"] = sel
     Settings.save(settings)
     LoadSettings()
     CreateMainMenu()
@@ -232,18 +241,20 @@ end
 function CreateCompilerMenu()
   local cur = settings["compiler"]
   local lines = {}
-  local list = Installed.getCompilers()
-  for _, os in ipairs(list) do
-    if os == cur then
-      os = "*" .. os
+  local versions = Installed.getCompilers()
+  for _, version in ipairs(versions) do
+    if version == cur then
+      version = "*" .. version
     end
-    table.insert(lines, Menu.item(os))
+    table.insert(lines, Menu.item(version))
   end
 
   local on_close = function() CreateMainMenu() end
 
   local on_submit = function(item)
-    settings["compiler"] = item.text
+    local sel = item.text
+    sel = string.gsub(sel, "*", "")
+    settings["compiler"] = sel
     Settings.save(settings)
     LoadSettings()
     CreateMainMenu()
@@ -253,16 +264,22 @@ function CreateCompilerMenu()
 end
 
 function CreateBuildScriptMenu()
+  local cur = settings["scripts"]
   local lines = {}
-  local list = Installed.getBuildScripts()
-  for _, os in ipairs(list) do
-    table.insert(lines, Menu.item(os))
+  local versions = Installed.getBuildScripts()
+  for _, version in ipairs(versions) do
+    if version == cur then
+      version = "*" .. version
+    end
+    table.insert(lines, Menu.item(version))
   end
 
   local on_close = function() CreateMainMenu() end
 
   local on_submit = function(item)
-    settings["scripts"] = item.text
+    local sel = item.text
+    sel = string.gsub(sel, "*", "")
+    settings["scripts"] = sel
     Settings.save(settings)
     LoadSettings()
     CreateMainMenu()
@@ -293,8 +310,7 @@ function LoadSettings()
 end
 
 local function setMappings()
-  vim.keymap.set("n", "<leader>t", ":lua require'particle'.project()<cr>",
-    { nowait=false, noremap=true, silent=true, desc = "Launch Particle.nvim local project configuration" })
+  vim.keymap.set("n", "<leader><leader>p", ":lua require'particle'.project()<cr>", { nowait=false, noremap=true, silent=true, desc = "Launch Particle.nvim local project configuration" })
 end
 
 local function get_env()
