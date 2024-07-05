@@ -58,6 +58,10 @@ function M.default()
   return settings
 end
 
+function M.get_query_driver(settings)
+  return Constants.CompilerDirectory .. settings["compiler"] .. "/bin/arm-none-eabi-gcc"
+end
+
 -- buildscript - particle makefile path
 -- particle - particle cli binary path
 -- platform_id

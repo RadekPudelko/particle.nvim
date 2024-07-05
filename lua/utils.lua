@@ -38,8 +38,11 @@ end
 -- Recursivly searches for a file starting at cwd and working up to root
 -- Returns path or nill
 -- Only good for file, not directories
-function M.findFile(file)
-  local current_dir = vim.fn.getcwd()
+function M.findFile(file, start)
+  local current_dir = start
+  if current_dir == nil then
+    current_dir = vim.fn.getcwd()
+  end
 
   while current_dir ~= "/" do
     local project_file = current_dir .. "/" .. file
