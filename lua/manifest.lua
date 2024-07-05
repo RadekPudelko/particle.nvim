@@ -102,5 +102,17 @@ function M.getFirmwareBinaryUrl(manifest, version)
     return nil
 end
 
+-- Returns true if the platform is valid for the device_os
+function M.is_platform_valid_for_device_os(manifest, device_os, platform)
+  local toolchain = M.getToolchain(manifest, device_os)
+  local platformMap = M.getPlatforms(manifest)
+  for _, platformId in ipairs(toolchain["platforms"]) do
+    if platform == platformMap[platformId] then
+      return true
+    end
+  end
+  return false
+end
+
 return M
 

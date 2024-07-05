@@ -7,6 +7,8 @@ local Installed = require("installed")
 local Commands = require("overseer_commands")
 -- local Commands = require("commands")
 
+-- TODO: Need to prompt for new platform on change in device os when current platform is not available
+
 local settings = nil
 local env = nil
 local manifest = nil
@@ -25,7 +27,7 @@ function M.hello()
 end
 
 function M.get_device_os_ccjson_dir()
-  -- LoadSettings()
+  -- LoadSettings(manifest)
   if settings == nil then
     return nil
   end
@@ -38,7 +40,7 @@ end
 
 -- TODO: check if it exists?
 function M.get_query_driver()
-  -- LoadSettings()
+  -- LoadSettings(manifest)
   if settings == nil then
     return nil
   end
@@ -101,7 +103,6 @@ end
 -- necessarily tell you if you need to clean
 -- Could look at build/target folder?
 
---TODO: add indicator of selected items in menu
 local function CreateMenu(title, lines, on_close, on_submit)
   local items = {}
   for _, item in ipairs(lines) do
@@ -158,13 +159,13 @@ function CreateMainMenu(manifest)
     if item.text == "Create config" then
       Settings.save(Settings.default())
       LoadSettings(manifest)
-      CreateMainMenu()
+      CreateMainMenu(manifest)
     elseif string.find(item.text, "Device OS:") then
-      CreateDeviceOSMenu()
+      CreateDeviceOSMenu(manifest)
     elseif string.find(item.text, "Platform:") then
-      CreatePlatformMenu()
+      CreatePlatformMenu(manifest)
     elseif string.find(item.text, "Compiler:") then
-      CreateCompilerMenu()
+      CreateCompilerMenu(manifest)
     else
       CreateBuildScriptMenu(manifest)
     end
@@ -173,7 +174,7 @@ function CreateMainMenu(manifest)
   CreateMenu("Particle.nvim", lines, on_close, on_submit)
 end
 
-function CreateDeviceOSMenu()
+function CreateDeviceOSMenu(manifest)
   local cur = settings["device_os"]
   local lines = {}
   local versions = Installed.getDeviceOSs()
@@ -184,15 +185,19 @@ function CreateDeviceOSMenu()
     table.insert(lines, Menu.item(version))
   end
 
-  local on_clversione = function() CreateMainMenu() end
+  local on_close = function() CreateMainMenu(manifest) end
 
   local on_submit = function(item)
     local sel = item.text
     sel = string.gsub(sel, "*", "")
     settings["device_os"] = sel
-    Settings.save(settings)
-    LoadSettings()
-    CreateMainMenu()
+    if not Manifest.is_platform_valid_for_device_os(manifest, sel, settings["platform"]) then
+      CreatePlatformMenu(manifest)
+    else
+      Settings.save(settings)
+      LoadSettings(manifest)
+      CreateMainMenu(manifest)
+    end
   end
 
   CreateMenu("Particle.nvim - Device OS", lines, on_close, on_submit)
@@ -201,7 +206,7 @@ end
 -- TODO: how to handle which device os to show and which platforms to show
 -- Not all device oses are valid for a selected platform and vice versa,
 ---- Open up platform menu to get selection
-function CreatePlatformMenu()
+function CreatePlatformMenu(manifest)
   -- Get the valid list of platforms for the current device os
   -- Search manifest["toolchains"] loop platforms where firmware == deviceOS@X.X.X
   -- Convert platforms from numbers to names
@@ -224,21 +229,21 @@ function CreatePlatformMenu()
     table.insert(lines, Menu.item(platform))
   end
 
-  local on_close = function() CreateMainMenu() end
+  local on_close = function() CreateMainMenu(manifest) end
 
   local on_submit = function(item)
     local sel = item.text
     sel = string.gsub(sel, "*", "")
     settings["platform"] = sel
     Settings.save(settings)
-    LoadSettings()
-    CreateMainMenu()
+    LoadSettings(manifest)
+    CreateMainMenu(manifest)
   end
 
   CreateMenu("Particle.nvim - Platform", lines, on_close, on_submit)
 end
 
-function CreateCompilerMenu()
+function CreateCompilerMenu(manifest)
   local cur = settings["compiler"]
   local lines = {}
   local versions = Installed.getCompilers()
@@ -249,21 +254,21 @@ function CreateCompilerMenu()
     table.insert(lines, Menu.item(version))
   end
 
-  local on_close = function() CreateMainMenu() end
+  local on_close = function() CreateMainMenu(manifest) end
 
   local on_submit = function(item)
     local sel = item.text
     sel = string.gsub(sel, "*", "")
     settings["compiler"] = sel
     Settings.save(settings)
-    LoadSettings()
-    CreateMainMenu()
+    LoadSettings(manifest)
+    CreateMainMenu(manifest)
   end
 
   CreateMenu("Particle.nvim - Compiler", lines, on_close, on_submit)
 end
 
-function CreateBuildScriptMenu()
+function CreateBuildScriptMenu(manifest)
   local cur = settings["scripts"]
   local lines = {}
   local versions = Installed.getBuildScripts()
@@ -274,21 +279,22 @@ function CreateBuildScriptMenu()
     table.insert(lines, Menu.item(version))
   end
 
-  local on_close = function() CreateMainMenu() end
+  local on_close = function() CreateMainMenu(manifest) end
 
   local on_submit = function(item)
     local sel = item.text
     sel = string.gsub(sel, "*", "")
     settings["scripts"] = sel
     Settings.save(settings)
-    LoadSettings()
-    CreateMainMenu()
+    LoadSettings(manifest)
+    CreateMainMenu(manifest)
   end
 
   CreateMenu("Particle.nvim - Build Script", lines, on_close, on_submit)
 end
 
-function LoadSettings()
+function LoadSettings(manifest)
+  print("load settings")
   settings = nil
   if Settings.exists() then
     -- TODO: Validate all settings json fields are present/valid
@@ -320,7 +326,7 @@ end
 function M.setup()
   setMappings()
   manifest = Manifest.setup()
-  LoadSettings()
+  LoadSettings(manifest)
   if settings ~= nil then
     Compile.setup_cc_json_dir(settings)
   else
@@ -331,18 +337,19 @@ function M.setup()
 end
 
 function M.project()
-  setMappings()
-  manifest = Manifest.setup()
-  LoadSettings()
-  if settings ~= nil then
-    Compile.setup_cc_json_dir(settings)
-  end
-
+  M.setup()
+  -- setMappings()
+  -- manifest = Manifest.setup()
+  -- LoadSettings(manifest)
+  -- if settings ~= nil then
+  --   Compile.setup_cc_json_dir(settings)
+  -- end
+  --
+  -- Commands.setup(get_env)
   -- local compile_user = Commands.CompileUser(settings, env)
   -- utils.printTable(compile_user)
   -- utils.printTable({unpack(compile_user, 2)})
-  CreateMainMenu()
-  Commands.setup(get_env)
+  CreateMainMenu(manifest)
 end
 
 print("Hello from particle.nvim")
