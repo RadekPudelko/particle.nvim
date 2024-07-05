@@ -1,13 +1,12 @@
 local Menu = require("nui.menu")
-local utils = require("utils")
+local Utils = require("utils")
 local Manifest = require("manifest")
 local Compile = require("compile")
 local Settings = require("settings")
 local Installed = require("installed")
+local Constants = require("constants")
 local Commands = require("overseer_commands")
 -- local Commands = require("commands")
-
--- TODO: Need to prompt for new platform on change in device os when current platform is not available
 
 local settings = nil
 local env = nil
@@ -67,9 +66,9 @@ function M.get_project_type(path)
     end
   end
 
-  local root = utils.findFile(".particle.nvim")
+  local root = Utils.findFile(Constants.SettingsFile)
   if root == nil then
-    root = utils.findFile("project.properties")
+    root = Utils.findFile(Constants.PropertiesFile)
   end
   if root ~= nil then
     -- Get dir of project root file
@@ -296,9 +295,11 @@ end
 function LoadSettings(manifest)
   print("load settings")
   settings = nil
-  if Settings.exists() then
+  local settings_path = Settings.find()
+  print("settings path ", settings_path)
+  if settings_path ~= nil then
     -- TODO: Validate all settings json fields are present/valid
-    settings = Settings.load()
+    settings = Settings.load(settings_path)
     if settings == nil then
       print("Failed to load settings")
     end
@@ -311,7 +312,7 @@ function LoadSettings(manifest)
   -- local manifest = Manifest.setup()
   local platformMap = Manifest.getPlatforms(manifest)
   env = Settings.getParticleEnv(platformMap, settings)
-  -- utils.printTable(env)
+  -- Utils.printTable(env)
   -- print(envPATH)
 end
 
@@ -347,8 +348,8 @@ function M.project()
   --
   -- Commands.setup(get_env)
   -- local compile_user = Commands.CompileUser(settings, env)
-  -- utils.printTable(compile_user)
-  -- utils.printTable({unpack(compile_user, 2)})
+  -- Utils.printTable(compile_user)
+  -- Utils.printTable({unpack(compile_user, 2)})
   CreateMainMenu(manifest)
 end
 

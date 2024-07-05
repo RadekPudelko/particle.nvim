@@ -61,7 +61,7 @@ function M.GetParentPath(path)
 end
 
 -- Reads the entire file
-function M.readfile(path)
+function M.read_file(path)
   local file = io.open(path, "r")
   if not file then return end
 

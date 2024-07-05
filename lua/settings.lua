@@ -1,18 +1,16 @@
 local Constants = require("constants")
-local utils = require "utils"
+local Utils = require("utils")
 
 local M = {}
-M.settingsPath = ".particle.nvim.json"
 
-function M.exists()
-  local path = utils.findFile(M.settingsPath)
-  return path ~= nil
+function M.find()
+  local path = Utils.findFile(Constants.SettingsFile)
+  return path
 end
 
 function M.save(config)
-    -- config = {deviceOS = "4.2.0", platform = "bsom"}
     local contents = vim.json.encode(config)
-    local file = io.open(M.settingsPath, "w")
+    local file = io.open(Constants.SettingsFile, "w")
     if not file then
         print("Failed to open settings file, err: " .. tostring(file))
         return
@@ -21,15 +19,10 @@ function M.save(config)
     file:close()
 end
 
-function M.load()
-  -- local path = utils.findFile(M.settingsPath)
-  -- if not path then
-  --   print("Settings not found")
-  --   return nil
-  -- end
-  local contents = utils.readfile(M.settingsPath)
+function M.load(path)
+  print("load ", path)
+  local contents = Utils.read_file(path)
   if not contents then return end
-  -- print(contents)
   return vim.json.decode(contents)
 end
 
@@ -72,21 +65,21 @@ function M.getParticleEnv(platforms, settings)
   env["particle_path"] = getParticle()
   env["buildscript_path"] = Constants.BuildScriptsDirectory .. "/" .. settings["scripts"] .. "/Makefile"
   env["device_os_path"] = Constants.DeviceOSDirectory .. "/" .. settings["device_os"]
-  env["appdir"] = utils.GetParentPath(utils.findFile(M.settingsPath)) -- TODO: pass this in
+  env["appdir"] = Utils.GetParentPath(Utils.findFile(Constants.SettingsFile)) -- TODO: pass this in
   env["platform_id"] = platforms[settings["platform"]]
   env["compiler_path"] = Constants.CompilerDirectory .. "/" .. settings["compiler"] .. "/bin"
   return env
 end
 
 -- local function loadProjectJson()
---   local path = utils.findFile(M.settingsPath)
+--   local path = Utils.findFile(M.SettingsFile)
 --   if not path then
---     return nil, M.settingsPath .. " not found"
+--     return nil, M.SettingsFile .. " not found"
 --   end
 --
 --   local file = io.open(path, "r")
 --   if not file then
---     return nil, "Unable to read " .. M.settingsPath
+--     return nil, "Unable to read " .. M.SettingsFile
 --   end
 --
 --   local contents = file:read("*a")
@@ -99,7 +92,7 @@ end
 
 -- local function saveProjectJson(settings)
 --   local json = vim.json.encode(settings)
---   vim.fn.writefile({json}, M.settingsPath)
+--   vim.fn.writefile({json}, M.SettingsFile)
 -- end
 
 return M

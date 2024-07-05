@@ -1,4 +1,4 @@
-local utils = require "utils"
+local Utils = require("utils")
 local M = {}
 
 local toolchainFolder = "./toolchains/"
@@ -9,7 +9,7 @@ function M.isInstalled(versions)
     for i=1, #versions do
         local file = toolchainFolder .. versions[i]
         -- TODO: figure out possible errs and how to handle
-        local exists, err = utils.exists(file)
+        local exists, err = Utils.exists(file)
         -- print("err ".. err)
         installed[versions[i]] = exists
     end
@@ -22,7 +22,7 @@ end
 function M.getDeviceOSBranch(versions, major)
     local branchStart = 1
     for i=1, #versions do
-        local versionMajor = utils.parseSemanticVersion(versions[i])["major"]
+        local versionMajor = Utils.parseSemanticVersion(versions[i])["major"]
         if versionMajor == major then
             branchStart = i
             break
@@ -31,7 +31,7 @@ function M.getDeviceOSBranch(versions, major)
 
     local branch = {}
     for i=branchStart, #versions do
-        local versionMajor = utils.parseSemanticVersion(versions[i])["major"]
+        local versionMajor = Utils.parseSemanticVersion(versions[i])["major"]
         if versionMajor ~= major then break end
         table.insert(branch, versions[i])
     end

@@ -1,12 +1,12 @@
 local api = vim.api
-local utils = require "utils"
+local Utils = require("utils")
 
 local M = {}
 
 local deviceOSChangelogPath
 
 function M.getDeviceOSChanges(version)
-    local changelog = utils.readfile(deviceOSChangelogPath)
+    local changelog = Utils.read_file(deviceOSChangelogPath)
 
     -- Versions with hypthens need to have %- to find
     local pattern = "## " .. string.gsub(version, "-", "%%-")
@@ -26,7 +26,7 @@ function M.setup(path)
         cmd
     })
 
-    if not utils.exists(deviceOSChangelogPath) then
+    if not Utils.exists(deviceOSChangelogPath) then
         print(cmd)
         print("Failed to download Changlog")
     end
