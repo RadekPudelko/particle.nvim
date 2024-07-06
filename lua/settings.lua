@@ -8,15 +8,21 @@ function M.find()
   return path
 end
 
-function M.save(config)
-    local contents = vim.json.encode(config)
-    local file = io.open(Constants.SettingsFile, "w")
-    if not file then
-        print("Failed to open settings file, err: " .. tostring(file))
-        return
-    end
-    file:write(contents)
-    file:close()
+function M.save(config, path)
+  local contents = vim.json.encode(config)
+  if path == nil then
+    path = Constants.SettingsFile
+  else
+    path = path .. "/" .. Constants.SettingsFile
+  end
+  print("Save to ", path)
+  local file = io.open(path, "w")
+  if not file then
+    print("Failed to open settings file, err: " .. tostring(file))
+    return
+  end
+  file:write(contents)
+  file:close()
 end
 
 function M.load(path)
@@ -52,7 +58,7 @@ function M.default()
 end
 
 function M.get_query_driver(settings)
-  return Constants.CompilerDirectory .. settings["compiler"] .. "/bin/arm-none-eabi-gcc"
+  return Constants.CompilerDirectory .. "/" .. settings["compiler"] .. "/bin/arm-none-eabi-gcc"
 end
 
 -- buildscript - particle makefile path

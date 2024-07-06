@@ -6,27 +6,23 @@ local Settings = require("settings")
 local Installed = require("installed")
 local Constants = require("constants")
 local Commands = require("overseer_commands")
--- local Commands = require("commands")
 
 local settings = nil
 local env = nil
 local manifest = nil
 
-local M = {}
+local project_root = nil
 
-M.is_setup = false
+local M = {}
 
 M.PROJECT_DEVICE_OS = 1
 M.PROJECT_LOCAL= 2
-
--- Need functions to tell if we are in a particle project, particle device os or something else
 
 function M.hello()
   return "hello"
 end
 
 function M.get_device_os_ccjson_dir()
-  -- LoadSettings(manifest)
   if settings == nil then
     return nil
   end
@@ -39,7 +35,6 @@ end
 
 -- TODO: check if it exists?
 function M.get_query_driver()
-  -- LoadSettings(manifest)
   if settings == nil then
     return nil
   end
@@ -56,7 +51,6 @@ function M.get_project_type(path)
     local goodRoot = root
     while true do
       match = string.match(root, "deviceOS/%d+%.%d+%.%d+")
-      print("uproot " .. root)
       if match ~= nil then
         goodRoot = root
         root = vim.fn.fnamemodify(root, ":h")
@@ -77,6 +71,19 @@ function M.get_project_type(path)
   end
 
   return nil, nil
+end
+
+-- Project root for saving settings file to
+function M.find_project_root()
+  local _, root = M.get_project_type(vim.fn.getcwd())
+  if root ~= nil then
+    return root
+  end
+  root = vim.fs.root(0, {'.git'})
+  if root ~= nil then
+    return root
+  end
+  return vim.fn.getcwd()
 end
 
 function M.get_settings()
@@ -156,7 +163,8 @@ function CreateMainMenu(manifest)
 
   local on_submit = function(item)
     if item.text == "Create config" then
-      Settings.save(Settings.default())
+      -- TODO: settings should try to find a root-like directory for the project to save to
+      Settings.save(Settings.default(), project_root)
       LoadSettings(manifest)
       CreateMainMenu(manifest)
     elseif string.find(item.text, "Device OS:") then
@@ -202,9 +210,6 @@ function CreateDeviceOSMenu(manifest)
   CreateMenu("Particle.nvim - Device OS", lines, on_close, on_submit)
 end
 
--- TODO: how to handle which device os to show and which platforms to show
--- Not all device oses are valid for a selected platform and vice versa,
----- Open up platform menu to get selection
 function CreatePlatformMenu(manifest)
   -- Get the valid list of platforms for the current device os
   -- Search manifest["toolchains"] loop platforms where firmware == deviceOS@X.X.X
@@ -300,20 +305,20 @@ function LoadSettings(manifest)
   if settings_path ~= nil then
     -- TODO: Validate all settings json fields are present/valid
     settings = Settings.load(settings_path)
+    Compile.setup_cc_json_dir(settings)
+
     if settings == nil then
       print("Failed to load settings")
     end
   else
     print("Settings dont exist")
-    return
+    return nil
   end
 
   env = nil
-  -- local manifest = Manifest.setup()
   local platformMap = Manifest.getPlatforms(manifest)
   env = Settings.getParticleEnv(platformMap, settings)
-  -- Utils.printTable(env)
-  -- print(envPATH)
+  return settings_path
 end
 
 local function setMappings()
@@ -329,14 +334,15 @@ function M.setup()
   Utils.ensure_directory(Constants.DataDir)
   Utils.ensure_directory(Constants.OSCCJsonDir)
   manifest = Manifest.setup()
-  LoadSettings(manifest)
-  if settings ~= nil then
-    Compile.setup_cc_json_dir(settings)
-  else
+  project_root = LoadSettings(manifest)
+  if project_root == nil then
+    project_root = M.find_project_root()
+  end
+  print("project root " .. project_root)
+  if settings == nil then
     return
   end
   Commands.setup(get_env)
-  M.is_setup = true
 end
 
 function M.project()
