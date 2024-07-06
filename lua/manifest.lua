@@ -7,10 +7,10 @@
 -- curl https://particle.gallery.vsassets.io/_apis/public/gallery/publisher/particle/extension/particle-vscode-core/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage -o particle.tar.gz
 
 local api = vim.api
+local Constants = require("constants")
 
 local M = {}
 
-local vscodePath = "~/.vscode/extensions"
 
 -- local manifest
 
@@ -44,7 +44,7 @@ local function loadParticleManifest(path)
 end
 
 function M.setup()
-    local path = findParticleManifest(vscodePath)
+    local path = findParticleManifest(Constants.VSCodeExtensionDir)
     return loadParticleManifest(path)
 end
 

@@ -326,6 +326,8 @@ end
 
 function M.setup()
   setMappings()
+  Utils.ensure_directory(Constants.DataDir)
+  Utils.ensure_directory(Constants.OSCCJsonDir)
   manifest = Manifest.setup()
   LoadSettings(manifest)
   if settings ~= nil then
@@ -339,17 +341,6 @@ end
 
 function M.project()
   M.setup()
-  -- setMappings()
-  -- manifest = Manifest.setup()
-  -- LoadSettings(manifest)
-  -- if settings ~= nil then
-  --   Compile.setup_cc_json_dir(settings)
-  -- end
-  --
-  -- Commands.setup(get_env)
-  -- local compile_user = Commands.CompileUser(settings, env)
-  -- Utils.printTable(compile_user)
-  -- Utils.printTable({unpack(compile_user, 2)})
   CreateMainMenu(manifest)
 end
 

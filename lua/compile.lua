@@ -1,5 +1,4 @@
-local Storage = require("storage")
--- local Settings = require("settings")
+local Constants = require("constants")
 -- local Installed = require("installed")
 -- local Utils = require("utils")
 
@@ -7,7 +6,7 @@ local utils = require "utils"
 local M = {}
 
 function M.get_cc_json_dir(settings)
-  return Storage.os_cc_json_path .. "/" .. settings["device_os"] .. "/" .. settings["platform"] .. "/" .. settings["compiler"]
+  return Constants.OSCCJsonDir .. "/" .. settings["device_os"] .. "/" .. settings["platform"] .. "/" .. settings["compiler"]
 end
 
 -- Each platform has different compile_commands.json output, and there isn't really
