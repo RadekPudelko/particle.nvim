@@ -1,4 +1,3 @@
-local Menu = require("nui.menu")
 local Utils = require("utils")
 local Manifest = require("manifest")
 local Compile = require("compile")
@@ -118,96 +117,73 @@ end
 -- Auto compile device os
 -- logging
 --
-local function CreateMenu(title, lines, on_close, on_submit)
-  local items = {}
-  for _, item in ipairs(lines) do
-    table.insert(items, Menu.item(item))
-  end
 
-  local menu = Menu({
-    position = "50%",
-    size = {
-      width = 40,
-      height = 10,
-    },
-    border = {
-      style = "rounded",
-      text = {
-        top = title,
-        top_align = "center",
-      },
-    },
-    win_options = {
-      winhighlight = "Normal:Normal,FloatBorder:Normal",
-    },
-  }, {
-      lines = items,
-      max_width = 20,
-      keymap = {
-        focus_next = { "j", "<Down>", "<Tab>" },
-        focus_prev = { "k", "<Up>", "<S-Tab>" },
-        close = { "q", "<Esc>", "<C-c>" },
-        submit = { "<CR>", "<Space>" },
-      },
-      on_close = on_close,
-      on_submit = on_submit,
-    })
-  menu:mount()
+local function format_cur_item(item, want)
+-- local function format_cur_item(item)
+  print("compare ", item)
+  if item == want then
+  -- if item == "6.1.0" then
+    return "*" .. item
+  end
+  return item
+end
+
+local function CreateMenu(title, lines, on_submit, format_item)
+  local opts = {
+    prompt = title,
+    format_item = format_item,
+  }
+  vim.ui.select(lines, opts, on_submit)
 end
 
 function CreateMainMenu(manifest)
   local lines = {}
   if settings == nil then
-    lines = {Menu.item("Create config")}
+    lines = {"Create config"}
   else
     lines = {
-      Menu.item("Device OS: " .. settings["device_os"]),
-      Menu.item("Platform: " .. settings["platform"]),
-      Menu.item("Compiler: " .. settings["compiler"]),
-      Menu.item("Build Script: " .. settings["scripts"])
+      "Device OS: " .. settings["device_os"],
+      "Platform: " .. settings["platform"],
+      "Compiler: " .. settings["compiler"],
+      "Build Script: " .. settings["scripts"]
     }
   end
 
-  local on_close = function() end
-
   local on_submit = function(item)
-    if item.text == "Create config" then
+    if item == nil then
+      return
+    end
+    if item == "Create config" then
       -- TODO: settings should try to find a root-like directory for the project to save to
       Settings.save(Settings.default(), project_root)
       LoadSettings(manifest)
       CreateMainMenu(manifest)
-    elseif string.find(item.text, "Device OS:") then
+    elseif string.find(item, "Device OS:") then
       CreateDeviceOSMenu(manifest)
-    elseif string.find(item.text, "Platform:") then
+    elseif string.find(item, "Platform:") then
       CreatePlatformMenu(manifest)
-    elseif string.find(item.text, "Compiler:") then
+    elseif string.find(item, "Compiler:") then
       CreateCompilerMenu(manifest)
     else
       CreateBuildScriptMenu(manifest)
     end
   end
 
-  CreateMenu("Particle.nvim", lines, on_close, on_submit)
+  CreateMenu("Particle.nvim", lines, on_submit)
 end
 
 function CreateDeviceOSMenu(manifest)
   local cur = settings["device_os"]
-  local lines = {}
-  local versions = Installed.getDeviceOSs()
-  for _, version in ipairs(versions) do
-    if version == cur then
-      version = "*" .. version
-    end
-    table.insert(lines, Menu.item(version))
-  end
-
-  local on_close = function() CreateMainMenu(manifest) end
+  local lines = Installed.getDeviceOSs()
 
   local on_submit = function(item)
-    local sel = item.text
-    sel = string.gsub(sel, "*", "")
-    settings["device_os"] = sel
-    if not Manifest.is_platform_valid_for_device_os(manifest, sel, settings["platform"]) then
+    if item == nil then
+      CreateMainMenu(manifest)
+      return
+    end
+
+    settings["device_os"] = item
+    if not Manifest.is_platform_valid_for_device_os(manifest, item, settings["platform"]) then
       CreatePlatformMenu(manifest)
     else
       Settings.save(settings)
@@ -216,7 +192,9 @@ function CreateDeviceOSMenu(manifest)
     end
   end
 
-  CreateMenu("Particle.nvim - Device OS", lines, on_close, on_submit)
+  local format_item = function(item) return format_cur_item(item, cur) end
+
+  CreateMenu("Particle.nvim - Device OS", lines, on_submit, format_item)
 end
 
 function CreatePlatformMenu(manifest)
@@ -236,74 +214,64 @@ function CreatePlatformMenu(manifest)
   local platformMap = Manifest.getPlatforms(manifest)
   for _, platformId in ipairs(toolchain["platforms"]) do
     local platform = platformMap[platformId]
-    if platform == cur then
-      platform = "*" .. platform
-    end
-    table.insert(lines, Menu.item(platform))
+    table.insert(lines, platform)
   end
 
-  local on_close = function() CreateMainMenu(manifest) end
-
   local on_submit = function(item)
-    local sel = item.text
-    sel = string.gsub(sel, "*", "")
-    settings["platform"] = sel
+    if item == nil then
+      CreateMainMenu(manifest)
+      return
+    end
+    settings["platform"] = item
     Settings.save(settings)
     LoadSettings(manifest)
     CreateMainMenu(manifest)
   end
 
-  CreateMenu("Particle.nvim - Platform", lines, on_close, on_submit)
+  local format_item = function(item) return format_cur_item(item, cur) end
+
+  CreateMenu("Particle.nvim - Platform", lines, on_submit, format_item)
 end
 
 function CreateCompilerMenu(manifest)
   local cur = settings["compiler"]
-  local lines = {}
-  local versions = Installed.getCompilers()
-  for _, version in ipairs(versions) do
-    if version == cur then
-      version = "*" .. version
-    end
-    table.insert(lines, Menu.item(version))
-  end
-
-  local on_close = function() CreateMainMenu(manifest) end
+  local lines = Installed.getCompilers()
 
   local on_submit = function(item)
-    local sel = item.text
-    sel = string.gsub(sel, "*", "")
-    settings["compiler"] = sel
+    if item == nil then
+      CreateMainMenu(manifest)
+      return
+    end
+    settings["compiler"] = item
     Settings.save(settings)
     LoadSettings(manifest)
     CreateMainMenu(manifest)
   end
 
-  CreateMenu("Particle.nvim - Compiler", lines, on_close, on_submit)
+  local format_item = function(item) return format_cur_item(item, cur) end
+
+  CreateMenu("Particle.nvim - Compiler", lines, on_submit, format_item)
 end
 
 function CreateBuildScriptMenu(manifest)
   local cur = settings["scripts"]
   local lines = {}
-  local versions = Installed.getBuildScripts()
-  for _, version in ipairs(versions) do
-    if version == cur then
-      version = "*" .. version
-    end
-    table.insert(lines, Menu.item(version))
-  end
-
-  local on_close = function() CreateMainMenu(manifest) end
+  local lines = Installed.getBuildScripts()
 
   local on_submit = function(item)
-    local sel = item.text
-    sel = string.gsub(sel, "*", "")
-    settings["scripts"] = sel
+    if item == nil then
+      CreateMainMenu(manifest)
+      return
+    end
+    settings["scripts"] = item
     Settings.save(settings)
     LoadSettings(manifest)
     CreateMainMenu(manifest)
   end
 
-  CreateMenu("Particle.nvim - Build Script", lines, on_close, on_submit)
+  local format_item = function(item) return format_cur_item(item, cur) end
+
+  CreateMenu("Particle.nvim - Build Script", lines, on_submit, format_item)
 end
 
 function LoadSettings(manifest)
