@@ -129,4 +129,9 @@ function M.ensure_directory(path)
     end
 end
 
+-- TODO: use this for joining paths
+function M.join(...)
+  return table.concat({...}, package.config:sub(1, 1))
+end
+
 return M

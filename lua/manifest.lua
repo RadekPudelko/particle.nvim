@@ -6,11 +6,11 @@
 -- To download particle vscode extension
 -- curl https://particle.gallery.vsassets.io/_apis/public/gallery/publisher/particle/extension/particle-vscode-core/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage -o particle.tar.gz
 
+local log = require("log")
 local api = vim.api
 local Constants = require("constants")
 
 local M = {}
-
 
 -- local manifest
 
@@ -19,33 +19,33 @@ local M = {}
 -- Used to load particle platforms, ids, device os versions and more
 local function findParticleManifest(path)
   -- TODO: convert to be OS agnostic
-    local result = api.nvim_call_function('systemlist', {
-        "find " .. path .. " -name manifest.json | grep toolchain-manager"
-    })
-    if #result == 0 then
-        print("Failed to find particle manifest")
-        return nil
-    elseif #result > 1 then
-        print("Found multiple particle manifests")
-    end
-    local particleManifestPath = result[1]
-    print("Using particle manifset from " .. result[1])
-    return particleManifestPath
+  local result = api.nvim_call_function('systemlist', {
+    "find " .. path .. " -name manifest.json | grep toolchain-manager"
+  })
+  if #result == 0 then
+    log:error("Failed to load particle manifset")
+    return nil
+    -- elseif #result > 1 then
+    --     print("Found multiple particle manifests")
+  end
+  local particleManifestPath = result[1]
+  log:info("Loading particle manifset from %s", result[1])
+  return particleManifestPath
 end
 
 local function loadParticleManifest(path)
-    local file = io.open(path, "r")
-    if not file then return end
+  local file = io.open(path, "r")
+  if not file then return end
 
-    local txt = file:read("*a")
-    file:close()
+  local txt = file:read("*a")
+  file:close()
 
-    return vim.json.decode(txt)
+  return vim.json.decode(txt)
 end
 
 function M.setup()
-    local path = findParticleManifest(Constants.VSCodeExtensionDir)
-    return loadParticleManifest(path)
+  local path = findParticleManifest(Constants.VSCodeExtensionDir)
+  return loadParticleManifest(path)
 end
 
 function M.getPlatforms(manifest)
@@ -83,23 +83,23 @@ function M.getToolchain(manifest, version)
 end
 
 function M.getFirmwareVersions(manifest)
-    local versions = {}
-    for i = 1, #manifest["toolchains"] do
-        local version = manifest["toolchains"][i]["firmware"]
-        versions[i] = string.match(version, "@(.*)")
-    end
-    return versions
+  local versions = {}
+  for i = 1, #manifest["toolchains"] do
+    local version = manifest["toolchains"][i]["firmware"]
+    versions[i] = string.match(version, "@(.*)")
+  end
+  return versions
 end
 
 function M.getFirmwareBinaryUrl(manifest, version)
-    -- local url = particleBinariesUrl .. version .. ".tar.gz"
-    for i = 1, #manifest["firmware"] do
-        local manifestVersion = manifest["firmware"][i]["version"]
-        if manifestVersion == version then
-            return manifest["firmware"][i]["url"]
-        end
+  -- local url = particleBinariesUrl .. version .. ".tar.gz"
+  for i = 1, #manifest["firmware"] do
+    local manifestVersion = manifest["firmware"][i]["version"]
+    if manifestVersion == version then
+      return manifest["firmware"][i]["url"]
     end
-    return nil
+  end
+  return nil
 end
 
 -- Returns true if the platform is valid for the device_os

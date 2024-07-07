@@ -1,3 +1,5 @@
+local log = require("log")
+-- local logger = Logger:get_instance()
 local Utils = require("utils")
 local Manifest = require("manifest")
 local Compile = require("compile")
@@ -112,17 +114,13 @@ end
 -- restart
 
 -- TODO: Take options for window
--- TODO: Migrate to vim.ui.select
 -- Configuration
 -- Auto compile device os
 -- logging
 --
 
 local function format_cur_item(item, want)
--- local function format_cur_item(item)
-  print("compare ", item)
   if item == want then
-  -- if item == "6.1.0" then
     return "*" .. item
   end
   return item
@@ -206,7 +204,7 @@ function CreatePlatformMenu(manifest)
   local cur = settings["platform"]
   local toolchain = Manifest.getToolchain(manifest, settings["device_os"])
   if toolchain == nil then
-    print("Failed to find toolchain info for device os " .. settings["device_os"])
+    log:error(string.format("Failed to find toolchain for device os %s", settings["device_os"]))
     return
   end
 
@@ -275,20 +273,19 @@ function CreateBuildScriptMenu(manifest)
 end
 
 function LoadSettings(manifest)
-  print("load settings")
   settings = nil
   local settings_path = Settings.find()
-  print("settings path ", settings_path)
   if settings_path ~= nil then
+    log:info("Loading settings from %s", settings_path)
     -- TODO: Validate all settings json fields are present/valid
     settings = Settings.load(settings_path)
     Compile.setup_cc_json_dir(settings)
 
     if settings == nil then
-      print("Failed to load settings")
+      log:error("Failed to load settings")
     end
   else
-    print("Settings dont exist")
+    log:info("No settings file found in ", vim.fn.getcwd())
     return nil
   end
 
@@ -315,7 +312,7 @@ function M.setup()
   if project_root == nil then
     project_root = M.find_project_root()
   end
-  print("project root " .. project_root)
+  log:info("Project root", project_root)
   if settings == nil then
     return
   end
@@ -327,6 +324,6 @@ function M.project()
   CreateMainMenu(manifest)
 end
 
-print("Hello from particle.nvim")
+log:info("Hello from particle.nvim")
 
 return M

@@ -1,5 +1,6 @@
 local Constants = require("constants")
 local Utils = require("utils")
+local log = require("log")
 
 local M = {}
 
@@ -15,18 +16,17 @@ function M.save(config, path)
   else
     path = path .. "/" .. Constants.SettingsFile
   end
-  print("Save to ", path)
-  local file = io.open(path, "w")
+  local file, err = io.open(path, "w")
   if not file then
-    print("Failed to open settings file, err: " .. tostring(file))
+    log:error("Failed to save settings to path=%s, err=%s", path, err)
     return
   end
   file:write(contents)
   file:close()
 end
 
+-- TODO: return the error!
 function M.load(path)
-  print("load ", path)
   local contents = Utils.read_file(path)
   if not contents then return end
   return vim.json.decode(contents)
@@ -38,10 +38,8 @@ local function getParticle()
     "which particle"
   })
   if #result == 0 then
-    print("Failed to find particle binary")
+    log:warn("Failed to find particle binary")
     return nil
-  elseif #result > 1 then
-    print("Found multiple particle binaries")
   end
   return result[1]
 end
