@@ -109,6 +109,15 @@ end
 -- necessarily tell you if you need to clean
 -- Could look at build/target folder?
 
+-- TODO: Could restart LSP after compiling, technically it works fine, but the diagnostics aren't resolved until
+-- restart
+
+-- TODO: Take options for window
+-- TODO: Migrate to vim.ui.select
+-- Configuration
+-- Auto compile device os
+-- logging
+--
 local function CreateMenu(title, lines, on_close, on_submit)
   local items = {}
   for _, item in ipairs(lines) do
@@ -122,7 +131,7 @@ local function CreateMenu(title, lines, on_close, on_submit)
       height = 10,
     },
     border = {
-      style = "single",
+      style = "rounded",
       text = {
         top = title,
         top_align = "center",
