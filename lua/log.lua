@@ -180,7 +180,7 @@ local root = Log.new({
   handlers = {
     {
       type = "echo",
-      level = vim.log.levels.DEBUG,
+      level = vim.log.levels.WARN,
     },
   },
 })

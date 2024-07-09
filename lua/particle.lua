@@ -1,5 +1,5 @@
+local config = require("config")
 local log = require("log")
--- local logger = Logger:get_instance()
 local Utils = require("utils")
 local Manifest = require("manifest")
 local Compile = require("compile")
@@ -14,7 +14,11 @@ local manifest = nil
 
 local project_root = nil
 
+local initialized = false
+
 local M = {}
+-- TODO: add way to show user log file location
+-- TODO: add way to quickly open log file, like LspLog command
 
 M.PROJECT_DEVICE_OS = 1
 M.PROJECT_LOCAL= 2
@@ -303,7 +307,17 @@ local function get_env()
   return settings, env
 end
 
-function M.setup()
+function M.config(user_config)
+  config.setup(user_config)
+  initialized = true
+end
+
+function M.setup(user_config)
+  if not initialized then
+    config.setup()
+    initialized = true
+  end
+
   setMappings()
   Utils.ensure_directory(Constants.DataDir)
   Utils.ensure_directory(Constants.OSCCJsonDir)

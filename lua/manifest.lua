@@ -103,8 +103,13 @@ function M.getFirmwareBinaryUrl(manifest, version)
 end
 
 -- Returns true if the platform is valid for the device_os
+-- TODO: Add config option to remove this check, ex 5.7.0 can't be compiled for anything, because its missing from manifest.json
 function M.is_platform_valid_for_device_os(manifest, device_os, platform)
   local toolchain = M.getToolchain(manifest, device_os)
+  if toolchain == nil then
+    return false
+  end
+
   local platformMap = M.getPlatforms(manifest)
   for _, platformId in ipairs(toolchain["platforms"]) do
     if platform == platformMap[platformId] then

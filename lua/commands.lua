@@ -70,6 +70,8 @@ function M.clean_os(settings, env)
   local parts = {}
   table.insert(parts, "rm -f " .. Compile.get_cc_json(settings))
   table.insert(parts, "&&")
+  table.insert(parts, "cd " .. Constants.DeviceOSDirectory .. "/" .. settings["device_os"] .. "/modules")
+  table.insert(parts, "&&")
   table.insert(parts, "make -s clean")
   table.insert(parts, "PLATFORM=" .. settings["platform"])
   table.insert(parts, "PLATFORM_ID=" .. env["platform_id"])
