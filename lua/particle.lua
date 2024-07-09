@@ -300,6 +300,11 @@ function LoadSettings(manifest)
 end
 
 local function setMappings()
+  vim.api.nvim_create_user_command('Particle', function()
+    vim.cmd('lua require("particle").project()')
+  end, {
+      desc = 'Opens the Particle project menu',
+    })
   vim.keymap.set("n", "<leader><leader>p", ":lua require'particle'.project()<cr>", { nowait=false, noremap=true, silent=true, desc = "Launch Particle.nvim local project configuration" })
 end
 
@@ -307,30 +312,26 @@ local function get_env()
   return settings, env
 end
 
-function M.config(user_config)
-  config.setup(user_config)
-  initialized = true
-end
-
 function M.setup(user_config)
-  if not initialized then
-    config.setup()
+  if initialized == false then
+    config.setup(user_config)
+    setMappings()
+    Utils.ensure_directory(Constants.DataDir)
+    Utils.ensure_directory(Constants.OSCCJsonDir)
+    manifest = Manifest.setup()
+    project_root = LoadSettings(manifest)
+    if project_root == nil then
+      project_root = M.find_project_root()
+    end
+    log:info("Project root", project_root)
+    if settings == nil then
+      return
+    end
+
+    Commands.setup(get_env)
+
     initialized = true
   end
-
-  setMappings()
-  Utils.ensure_directory(Constants.DataDir)
-  Utils.ensure_directory(Constants.OSCCJsonDir)
-  manifest = Manifest.setup()
-  project_root = LoadSettings(manifest)
-  if project_root == nil then
-    project_root = M.find_project_root()
-  end
-  log:info("Project root", project_root)
-  if settings == nil then
-    return
-  end
-  Commands.setup(get_env)
 end
 
 function M.project()
