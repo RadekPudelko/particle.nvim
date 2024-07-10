@@ -86,22 +86,61 @@ function M.parseSemanticVersion(version)
   if #version == 0 then return false end
   local maj, min, pat = string.match(version, "(%d+)%.(%d+)%.(%d+)")
   if maj and min and pat then
-    return { major = maj, minor = min, patch = pat }
+    return { major = tonumber(maj), minor = tonumber(min), patch = tonumber(pat) }
   end
 end
 
--- synchronous shell command executation using vim.system()
-function M.run(command)
-  local obj = vim.system(command, { text = true }):wait()
-  if obj.code ~= 0 then
-    local cmd = table.concat(command, " ")
-    print("Command " .. cmd .. " exited with code " .. obj.code)
-    print("stdout " .. obj.stdout)
-    print("stderr " .. obj.stderr)
-    return false
+-- Return -1 if a > b, 0 if same, 1 if b > a
+function M.compare_semantic_verions(a, b)
+  if a.major ~= b.major then
+    if a.major > b.major then
+      return -1;
+    elseif a.major < b.major then
+      return 1;
+    else
+      return 0;
+    end
+  elseif a.minor ~= b.minor then
+    if a.minor > b.minor then
+      return -1;
+    elseif a.minor < b.minor then
+      return 1;
+    else
+      return 0;
+    end
+  elseif a.patch > b.patch then
+    return -1;
+  elseif a.patch < b.patch then
+    return 1;
+  else
+    return 0;
   end
-  return true
 end
+
+function M.string_split(str)
+  local out = {}
+  for line in str:gmatch("[^\n]+") do
+    table.insert(out, line)
+  end
+  return out
+end
+
+-- synchronous shell command executation using vim.system()
+function M.run(command, output_as_table)
+  local result = vim.system(command, { text = true }):wait()
+
+  -- print(table.concat(command, " "))
+
+  -- local cmd = table.concat(command, " ")
+  -- print("Command: " .. command .. " exited with code " .. result.code)
+  -- print("stdout: " .. result.stdout)
+  -- print("stderr: " .. result.stderr)
+  if result.code ~= 0 then
+    return false, result.stderr
+  end
+  return true, result.stdout
+end
+
 
 function M.scanDirectory(path, cb)
   -- TODO: return errors

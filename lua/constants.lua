@@ -9,6 +9,11 @@ M.PropertiesFile = "project.properties"
 
 M.DataDir = vim.fn.stdpath('data') .. "/particle"
 M.OSCCJsonDir = M.DataDir .. "/cc/os"
+M.ManifestDir = M.DataDir .. "/manifset"
+M.ManifestFile = M.ManifestDir .. "/manifest.json"
+M.ManifestVersionFile = M.ManifestDir .. "/manifest_version.txt"
+M.WorkbenchDownloadFile = M.ManifestDir .. "/particle.tar.gz"
+M.WorkbenchExtractDir= M.ManifestDir .. "/particle_extracted"
 
 M.VSCodeExtensionDir = vim.fn.expand("~/.vscode/extensions")
 

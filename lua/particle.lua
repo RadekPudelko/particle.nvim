@@ -14,7 +14,7 @@ local manifest = nil
 
 local project_root = nil
 
-local initialized = false
+local initialized = 0
 
 local M = {}
 -- TODO: add way to show user log file location
@@ -313,24 +313,39 @@ local function get_env()
 end
 
 function M.setup(user_config)
-  if initialized == false then
-    config.setup(user_config)
-    setMappings()
-    Utils.ensure_directory(Constants.DataDir)
-    Utils.ensure_directory(Constants.OSCCJsonDir)
-    manifest = Manifest.setup()
-    project_root = LoadSettings(manifest)
-    if project_root == nil then
-      project_root = M.find_project_root()
-    end
-    log:info("Project root", project_root)
-    if settings == nil then
-      return
-    end
+  if initialized == 0 then
+    initialized = 1
+      -- vim.defer_fn(function()
+    -- vim.schedule(function()
+      config.setup(user_config)
+      setMappings()
+      Utils.ensure_directory(Constants.DataDir)
+      Utils.ensure_directory(Constants.OSCCJsonDir)
+      Utils.ensure_directory(Constants.ManifestDir)
+      Utils.ensure_directory(Constants.WorkbenchExtractDir)
+      manifest = Manifest.setup()
+      project_root = LoadSettings(manifest)
+      if project_root == nil then
+        project_root = M.find_project_root()
+      end
+      log:info("Project root", project_root)
+      if settings == nil then
+        return
+      end
 
-    Commands.setup(get_env)
+      Commands.setup(get_env)
+      -- local a = 1
+      -- while a ~= 5000000000 do
+      --   a = a + 1
+      -- end
+      --   -- Your startup code here
+      --   print("Plugin startup complete.")
+      -- end, 10000)  -- 5 seconds delay
 
-    initialized = true
+      initialized = 2
+      print("init complete")
+    -- end, 10)
+    -- end)
   end
 end
 
