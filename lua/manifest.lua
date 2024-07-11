@@ -7,32 +7,12 @@
 -- curl -sS https://particle.gallery.vsassets.io/_apis/public/gallery/publisher/particle/extension/particle-vscode-core/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage -o particle.tar.gz
 
 local log = require("log")
-local api = vim.api
 local Constants = require("constants")
 local utils = require("utils")
 
 local M = {}
 
 -- local manifest
-
--- Find the Particle's manifest file from within their toolchain package in the
--- particle workbench core vscode extension
--- Used to load particle platforms, ids, device os versions and more
-local function findParticleManifest(path)
-  -- TODO: convert to be OS agnostic
-  local result = api.nvim_call_function('systemlist', {
-    "find " .. path .. " -name manifest.json | grep toolchain-manager"
-  })
-  if #result == 0 then
-    log:error("Failed to load particle manifset")
-    return nil
-    -- elseif #result > 1 then
-    --     print("Found multiple particle manifests")
-  end
-  local particleManifestPath = result[1]
-  log:info("Loading particle manifset from %s", result[1])
-  return particleManifestPath
-end
 
 local function loadParticleManifest(path)
   local file, err = io.open(path, "r")
@@ -209,25 +189,15 @@ local function extract_workbench()
   end
 end
 
-
 local function find_manifest_json(search_dir)
-  local cmd = {
-    "find",
-    search_dir,
-    '-name', "manifest.json"
-  }
+  local results = vim.fs.find({"manifest.json", type = "file", path = search_dir})
 
-  -- Execute the command and capture the output
-  local res, out = utils.run(cmd, true)
-  out = utils.string_split(out)
-  if not res or #out == 0 then
-    log:error("Failed to find manifest.json in %s, err=%s", search_dir, out)
+  if #results == 0 then
+    log:error("Failed to find manifest.json in %s", search_dir)
     return nil
   end
-  if #out > 1 then
-    log:warn("Found %d manifset.json files in %s", #out, search_dir)
-  end
-  return out[1]
+
+  return results[1]
 end
 
 local function finalize_manifest(manifest_path, version_string)

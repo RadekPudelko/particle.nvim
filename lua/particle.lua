@@ -65,13 +65,14 @@ function M.get_project_type(path)
     end
   end
 
-  local root = Utils.findFile(Constants.SettingsFile)
-  if root == nil then
-    root = Utils.findFile(Constants.PropertiesFile)
+  local results = vim.fs.find({Constants.SettingsFile, type = "file", upward=true})
+  if #results == 0 then
+    results = vim.fs.find({Constants.PropertiesFile, type = "file", upward=true})
   end
-  if root ~= nil then
+
+  if #results ~= 0 then
     -- Get dir of project root file
-    root = vim.fn.fnamemodify(root, ":h")
+    local root = vim.fs.dirname(results[1])
     return M.PROJECT_LOCAL, root
   end
 
@@ -279,6 +280,8 @@ end
 function LoadSettings(manifest)
   settings = nil
   local settings_path = Settings.find()
+
+  log:info("Failed to find %s", Constants.SettingsFile)
   if settings_path ~= nil then
     log:info("Loading settings from %s", settings_path)
     -- TODO: Validate all settings json fields are present/valid
@@ -295,7 +298,7 @@ function LoadSettings(manifest)
 
   env = nil
   local platformMap = Manifest.getPlatforms(manifest)
-  env = Settings.getParticleEnv(platformMap, settings)
+  env = Settings.getParticleEnv(platformMap, settings, vim.fs.dirname(settings_path))
   return settings_path
 end
 
@@ -323,7 +326,9 @@ function M.setup(user_config)
       Utils.ensure_directory(Constants.OSCCJsonDir)
       Utils.ensure_directory(Constants.ManifestDir)
       Utils.ensure_directory(Constants.WorkbenchExtractDir)
+
       manifest = Manifest.setup()
+
       project_root = LoadSettings(manifest)
       if project_root == nil then
         project_root = M.find_project_root()
