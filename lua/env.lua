@@ -24,7 +24,6 @@ end
 -- device_os_path
 -- appdir
 function M.setup_env(platforms, root)
-  print("setup_env root ", root)
   env = {}
   env.particle_path = get_particle_binary()
   -- env.buildscript_path = Constants.BuildScriptsDirectory .. "/" .. settings.scripts .. "/Makefile"

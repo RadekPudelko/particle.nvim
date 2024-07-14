@@ -11,8 +11,6 @@ local Commands = require("overseer_commands")
 
 --TODO after create config, overseer commands should be registered
 
--- local manifest = nil
-
 local project_root = nil
 
 local initialized = 0
@@ -141,16 +139,16 @@ local function CreateMenu(title, lines, on_submit, format_item)
   vim.ui.select(lines, opts, on_submit)
 end
 
-function CreateMainMenu(manifest)
+function CreateMainMenu()
   local lines = {}
   if not settings_loaded then
     lines = {"Create config"}
   else
     lines = {
-      "Device OS: " .. settings["device_os"],
-      "Platform: " .. settings["platform"],
-      "Compiler: " .. settings["compiler"],
-      "Build Script: " .. settings["scripts"]
+      "Device OS: " .. settings.get_device_os(),
+      "Platform: " .. settings.get_platform(),
+      "Compiler: " .. settings.get_compiler(),
+      "Build Script: " .. settings.get_scripts()
     }
   end
 
@@ -162,39 +160,39 @@ function CreateMainMenu(manifest)
       -- TODO: settings should try to find a root-like directory for the project to save to
       settings.new()
       settings.save(project_root)
-      LoadSettings(manifest)
-      CreateMainMenu(manifest)
+      LoadSettings()
+      CreateMainMenu()
     elseif string.find(item, "Device OS:") then
-      CreateDeviceOSMenu(manifest)
+      CreateDeviceOSMenu()
     elseif string.find(item, "Platform:") then
-      CreatePlatformMenu(manifest)
+      CreatePlatformMenu()
     elseif string.find(item, "Compiler:") then
-      CreateCompilerMenu(manifest)
+      CreateCompilerMenu()
     else
-      CreateBuildScriptMenu(manifest)
+      CreateBuildScriptMenu()
     end
   end
 
   CreateMenu("Particle.nvim", lines, on_submit)
 end
 
-function CreateDeviceOSMenu(manifest)
+function CreateDeviceOSMenu()
   local cur = settings.get_device_os()
   local lines = Installed.getDeviceOSs()
 
   local on_submit = function(item)
     if item == nil then
-      CreateMainMenu(manifest)
+      CreateMainMenu()
       return
     end
 
     settings.set_device_os(item)
     if not Manifest.is_platform_valid_for_device_os(item, settings.get_platform()) then
-      CreatePlatformMenu(manifest)
+      CreatePlatformMenu()
     else
       settings.save(project_root)
-      LoadSettings(manifest)
-      CreateMainMenu(manifest)
+      LoadSettings()
+      CreateMainMenu()
     end
   end
 
@@ -203,7 +201,7 @@ function CreateDeviceOSMenu(manifest)
   CreateMenu("Particle.nvim - Device OS", lines, on_submit, format_item)
 end
 
-function CreatePlatformMenu(manifest)
+function CreatePlatformMenu()
   -- Get the valid list of platforms for the current device os
   -- Search manifest["toolchains"] loop platforms where firmware == deviceOS@X.X.X
   -- Convert platforms from numbers to names
@@ -225,13 +223,13 @@ function CreatePlatformMenu(manifest)
 
   local on_submit = function(item)
     if item == nil then
-      CreateMainMenu(manifest)
+      CreateMainMenu()
       return
     end
     settings.set_platform(item)
     settings.save(project_root)
-    LoadSettings(manifest)
-    CreateMainMenu(manifest)
+    LoadSettings()
+    CreateMainMenu()
   end
 
   local format_item = function(item) return format_cur_item(item, cur) end
@@ -239,19 +237,19 @@ function CreatePlatformMenu(manifest)
   CreateMenu("Particle.nvim - Platform", lines, on_submit, format_item)
 end
 
-function CreateCompilerMenu(manifest)
+function CreateCompilerMenu()
   local cur = settings.get_compiler()
   local lines = Installed.getCompilers()
 
   local on_submit = function(item)
     if item == nil then
-      CreateMainMenu(manifest)
+      CreateMainMenu()
       return
     end
     settings.set_compiler(item)
     settings.save(project_root)
-    LoadSettings(manifest)
-    CreateMainMenu(manifest)
+    LoadSettings()
+    CreateMainMenu()
   end
 
   local format_item = function(item) return format_cur_item(item, cur) end
@@ -259,19 +257,19 @@ function CreateCompilerMenu(manifest)
   CreateMenu("Particle.nvim - Compiler", lines, on_submit, format_item)
 end
 
-function CreateBuildScriptMenu(manifest)
+function CreateBuildScriptMenu()
   local cur = settings.get_scripts()
   local lines = Installed.getBuildScripts()
 
   local on_submit = function(item)
     if item == nil then
-      CreateMainMenu(manifest)
+      CreateMainMenu()
       return
     end
     settings.set_scripts(item)
-    settings.save(settings)
-    LoadSettings(manifest)
-    CreateMainMenu(manifest)
+    settings.save(project_root)
+    LoadSettings()
+    CreateMainMenu()
   end
 
   local format_item = function(item) return format_cur_item(item, cur) end
@@ -279,7 +277,7 @@ function CreateBuildScriptMenu(manifest)
   CreateMenu("Particle.nvim - Build Script", lines, on_submit, format_item)
 end
 
-function LoadSettings(manifest)
+function LoadSettings()
 
   settings_loaded = false
   local settings_path = settings.find()
@@ -299,7 +297,6 @@ function LoadSettings(manifest)
 
   local platformMap = Manifest.getPlatforms()
   env.setup_env(platformMap, vim.fs.dirname(settings_path))
-  print("env setup")
   settings_loaded = true
   return settings_path
 end
@@ -316,41 +313,46 @@ end
 function M.setup(user_config)
   if initialized == 0 then
     initialized = 1
-      config.setup(user_config)
-      setMappings()
-      Utils.ensure_directory(Constants.DataDir)
-      Utils.ensure_directory(Constants.OSCCJsonDir)
-      Utils.ensure_directory(Constants.ManifestDir)
-      Utils.ensure_directory(Constants.WorkbenchExtractDir)
+    config.setup(user_config)
+    setMappings()
+    Utils.ensure_directory(Constants.DataDir)
+    Utils.ensure_directory(Constants.OSCCJsonDir)
+    Utils.ensure_directory(Constants.ManifestDir)
+    Utils.ensure_directory(Constants.WorkbenchExtractDir)
 
-      local manifest = Manifest.setup()
+    local err = Manifest.setup()
+    if err ~= nil then
+      log:error("Failed to load manifest, err=%s", err)
+    end
 
-      project_root = LoadSettings(manifest)
-      if project_root == nil then
-        project_root = M.find_project_root()
-      end
-      log:info("Project root", project_root)
-      if settings == nil then
-        return
-      end
+    project_root = LoadSettings()
+    if project_root ~= nil then
+      project_root = vim.fs.dirname(project_root)
+    else
+      project_root = M.find_project_root()
+    end
+    log:info("Project root ", project_root)
+    if settings == nil then
+      return
+    end
 
-      Commands.setup()
-      -- local a = 1
-      -- while a ~= 5000000000 do
-      --   a = a + 1
-      -- end
-      --   -- Your startup code here
-      --   print("Plugin startup complete.")
-      -- end, 10000)  -- 5 seconds delay
+    Commands.setup()
+    -- local a = 1
+    -- while a ~= 5000000000 do
+    --   a = a + 1
+    -- end
+    --   -- Your startup code here
+    --   print("Plugin startup complete.")
+    -- end, 10000)  -- 5 seconds delay
 
-      initialized = 2
-      print("init complete")
+    initialized = 2
+    print("init complete")
   end
 end
 
 function M.project()
   M.setup()
-  CreateMainMenu(manifest)
+  CreateMainMenu()
 end
 
 log:info("Hello from particle.nvim")

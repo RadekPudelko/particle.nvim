@@ -18,7 +18,6 @@ local function loadParticleManifest(path)
   local file, err = io.open(path, "r")
   if not file then
     return string.format("Failed to open manifest file=%s err=%s", path, err)
-    -- log:warn("Failed to open manifest file=%s err=%s", path, err)
   end
 
   local txt = file:read("*a")
@@ -85,12 +84,12 @@ end
 -- Returns true if the platform is valid for the device_os
 -- TODO: Add config option to remove this check, ex 5.7.0 can't be compiled for anything, because its missing from manifest.json
 function M.is_platform_valid_for_device_os(device_os, platform)
-  local toolchain = M.getToolchain(manifest, device_os)
+  local toolchain = M.getToolchain(device_os)
   if toolchain == nil then
     return false
   end
 
-  local platformMap = M.getPlatforms(manifest)
+  local platformMap = M.getPlatforms()
   for _, platformId in ipairs(toolchain["platforms"]) do
     if platform == platformMap[platformId] then
       return true
@@ -231,11 +230,16 @@ function M.setup()
   local workbench_json = get_latest_workbench_info()
   if workbench_json == nil then
     if current_version == nil then
-      log:error("Unable to load manifest file")
-      return
+      -- log:error("Unable to load manifest file")
+      return string.format("Unable to load manifest file")
     end
     -- Fallback to local manifset file
-    return loadParticleManifest(Constants.ManifestFile)
+    local err = loadParticleManifest(Constants.ManifestFile)
+    if err ~= nil then
+      -- log:error("Failed to load local particle manifest, err=%s")
+      return string.format("Failed to load local particle manifest, err=%s")
+    end
+    return nil
   end
 
   -- TODO: Choose the latest
