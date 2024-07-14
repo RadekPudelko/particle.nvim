@@ -20,22 +20,12 @@ end
 
 -- buildscript - particle makefile path
 -- particle - particle cli binary path
--- platform_id
 -- device_os_path
 -- appdir
-function M.setup_env(platforms, root)
+function M.setup_env(root)
   env = {}
   env.particle_path = get_particle_binary()
-  -- env.buildscript_path = Constants.BuildScriptsDirectory .. "/" .. settings.scripts .. "/Makefile"
-  -- env.device_os_path = Constants.DeviceOSDirectory .. "/" .. settings.device_os
   env.appdir = root
-  env.platform_id = platforms[settings.get_platform()]
-  -- env.compiler_path = Constants.CompilerDirectory .. "/" .. settings.compiler .. "/bin"
-  print("appdir ", env.appdir)
-end
-
-function M.get_platform_id()
-  return env.platform_id
 end
 
 function M.get_particle_path()

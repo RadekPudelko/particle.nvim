@@ -38,6 +38,27 @@ function M.getPlatforms()
   return platforms
 end
 
+
+function M.get_platform_name(want_id)
+  for i = 1, #manifest["platforms"] do
+    local id = manifest["platforms"][i]["id"]
+    if want_id == id then
+      return manifest["platforms"][i]["name"]
+    end
+    return nil
+  end
+end
+
+function M.get_platform_id(want_name)
+  for i = 1, #manifest["platforms"] do
+    local name = manifest["platforms"][i]["name"]
+    if want_name == name then
+      return manifest["platforms"][i]["id"]
+    end
+  end
+  return nil
+end
+
 -- "platforms": [
 --     12,
 --     13,

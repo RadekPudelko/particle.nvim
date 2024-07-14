@@ -1,6 +1,7 @@
 local Constants = require("constants")
 -- local Installed = require("installed")
 local Compile = require("compile")
+local manifest = require("manifest")
 local settings = require("settings")
 local env = require("env")
 
@@ -13,7 +14,7 @@ local function create_make_command(make_target)
   table.insert(parts, "DEVICE_OS_PATH=" .. env.get_device_os_path())
   table.insert(parts, "APPDIR=" .. env.get_app_dir())
   table.insert(parts, "PLATFORM=" .. settings.get_platform())
-  table.insert(parts, "PLATFORM_ID=" .. env.get_platform_id())
+  table.insert(parts, "PLATFORM_ID=" .. manifest.get_platform_id(settings.get_platform()))
   return table.concat(parts, " ")
 end
 
@@ -43,7 +44,7 @@ function M.compile_os()
   table.insert(parts, "bear --append --output " .. Compile.get_cc_json() .. " --")
   table.insert(parts, "make -s all")
   table.insert(parts, "PLATFORM=" .. settings.get_platform())
-  table.insert(parts, "PLATFORM_ID=" .. env.get_platform_id())
+  table.insert(parts, "PLATFORM_ID=" .. manifest.get_platform_id(settings.get_platform()))
   return table.concat(parts, " ")
 end
 
@@ -76,7 +77,7 @@ function M.clean_os()
   table.insert(parts, "&&")
   table.insert(parts, "make -s clean")
   table.insert(parts, "PLATFORM=" .. settings.get_platform())
-  table.insert(parts, "PLATFORM_ID=" .. env.get_platform_id())
+  table.insert(parts, "PLATFORM_ID=" .. manifest.get_platform_id(settings.get_platform()))
   return table.concat(parts, " ")
 end
 

@@ -5,6 +5,7 @@ local log = require("log")
 local M = {}
 
 local settings = {}
+local settings_loaded = false
 
 -- TODO: these defaults need to be generated according to whats installed locally or blank
 function M.new()
@@ -14,6 +15,7 @@ function M.new()
     ["compiler"] = "10.2.1",
     ["scripts"] = "1.15.0"
   }
+  settings_loaded = true
 end
 
 function M.find()
@@ -59,6 +61,7 @@ function M.load(path)
   settings.platform = decoded.platform
   settings.compiler = decoded.compiler
   settings.scripts = decoded.scripts
+  settings_loaded = true
   return nil
 end
 
@@ -90,6 +93,10 @@ function M.get_compiler()
 end
 function M.get_scripts()
   return settings.scripts
+end
+
+function M.loaded()
+  return settings_loaded
 end
 
 return M
