@@ -4,9 +4,20 @@ local log = require("log")
 
 local M = {}
 
+local settings = {}
+
+-- TODO: these defaults need to be generated according to whats installed locally or blank
+function M.new()
+  settings = {
+    ["device_os"] = "6.1.0",
+    ["platform"] = "bsom",
+    ["compiler"] = "10.2.1",
+    ["scripts"] = "1.15.0"
+  }
+end
+
 function M.find()
   local results = vim.fs.find({Constants.SettingsFile, type = "file", upward=true})
-
   if #results == 0 then
     return nil
   end
@@ -14,8 +25,10 @@ function M.find()
   return results[1]
 end
 
-function M.save(config, path)
-  local contents = vim.json.encode(config)
+-- path is the folder to save into
+function M.save(path)
+  -- TODO: check is empty?
+  local contents = vim.json.encode(settings)
   if path == nil then
     path = Constants.SettingsFile
   else
@@ -30,54 +43,53 @@ function M.save(config, path)
   file:close()
 end
 
--- TODO: return the error!
+-- TODO: validate
 function M.load(path)
-  local contents = Utils.read_file(path)
-  if not contents then return end
-  return vim.json.decode(contents)
-end
-
--- TODO: find particle binary using lua
-local function getParticle()
-  local result = vim.api.nvim_call_function('systemlist', {
-    "which particle"
-  })
-  if #result == 0 then
-    log:warn("Failed to find particle binary")
-    return nil
+  local err, contents = Utils.read_file(path)
+  if err ~= nil then
+    return err
   end
-  return result[1]
+  if not contents then
+    return string.format("File is empty")
+  end
+
+  local decoded = vim.json.decode(contents)
+  settings = {}
+  settings.device_os = decoded.device_os
+  settings.platform = decoded.platform
+  settings.compiler = decoded.compiler
+  settings.scripts = decoded.scripts
+  return nil
 end
 
--- TODO: these defaults need to be generated according to whats installed locally or blank
-function M.default()
-  local settings = {
-    ["device_os"] = "6.1.0",
-    ["platform"] = "bsom",
-    ["compiler"] = "10.2.1",
-    ["scripts"] = "1.15.0"
-  }
-  return settings
-end
-
-function M.get_query_driver(settings)
+function M.get_query_driver()
   return Constants.CompilerDirectory .. "/" .. settings["compiler"] .. "/bin/arm-none-eabi-gcc"
 end
 
--- buildscript - particle makefile path
--- particle - particle cli binary path
--- platform_id
--- device_os_path
--- appdir
-function M.getParticleEnv(platforms, settings, root)
-  local env = {}
-  env["particle_path"] = getParticle()
-  env["buildscript_path"] = Constants.BuildScriptsDirectory .. "/" .. settings["scripts"] .. "/Makefile"
-  env["device_os_path"] = Constants.DeviceOSDirectory .. "/" .. settings["device_os"]
-  env["appdir"] = root
-  env["platform_id"] = platforms[settings["platform"]]
-  env["compiler_path"] = Constants.CompilerDirectory .. "/" .. settings["compiler"] .. "/bin"
-  return env
+function M.set_device_os(device_os)
+  settings.device_os = device_os
+end
+function M.set_platform(platform)
+  settings.platform = platform
+end
+function M.set_compiler(compiler)
+  settings.compiler = compiler
+end
+function M.set_scripts(scripts)
+  settings.scripts = scripts
+end
+
+function M.get_device_os()
+  return settings.device_os
+end
+function M.get_platform()
+  return settings.platform
+end
+function M.get_compiler()
+  return settings.compiler
+end
+function M.get_scripts()
+  return settings.scripts
 end
 
 return M

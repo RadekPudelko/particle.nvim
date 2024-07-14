@@ -12,23 +12,23 @@ local utils = require("utils")
 
 local M = {}
 
--- local manifest
+local manifest = {}
 
 local function loadParticleManifest(path)
   local file, err = io.open(path, "r")
   if not file then
-    log:warn("Failed to open manifest file=%s err=%s", path, err)
-    return nil
+    return string.format("Failed to open manifest file=%s err=%s", path, err)
+    -- log:warn("Failed to open manifest file=%s err=%s", path, err)
   end
 
   local txt = file:read("*a")
   file:close()
 
-  return vim.json.decode(txt)
+  manifest = vim.json.decode(txt)
+  return nil
 end
 
-
-function M.getPlatforms(manifest)
+function M.getPlatforms()
   local platforms = {}
   for i = 1, #manifest["platforms"] do
     local id = manifest["platforms"][i]["id"]
@@ -52,7 +52,7 @@ end
 -- "tools": "buildtools@1.1.1",
 -- "scripts": "buildscripts@1.15.0",
 -- "debuggers": "openocd@0.11.0-particle.4",
-function M.getToolchain(manifest, version)
+function M.getToolchain(version)
   for i = 1, #manifest["toolchains"] do
     local firmware = manifest["toolchains"][i]["firmware"]
     local desiredVersionString = "deviceOS@" .. version
@@ -62,7 +62,7 @@ function M.getToolchain(manifest, version)
   end
 end
 
-function M.getFirmwareVersions(manifest)
+function M.getFirmwareVersions()
   local versions = {}
   for i = 1, #manifest["toolchains"] do
     local version = manifest["toolchains"][i]["firmware"]
@@ -71,7 +71,7 @@ function M.getFirmwareVersions(manifest)
   return versions
 end
 
-function M.getFirmwareBinaryUrl(manifest, version)
+function M.getFirmwareBinaryUrl(version)
   -- local url = particleBinariesUrl .. version .. ".tar.gz"
   for i = 1, #manifest["firmware"] do
     local manifestVersion = manifest["firmware"][i]["version"]
@@ -84,7 +84,7 @@ end
 
 -- Returns true if the platform is valid for the device_os
 -- TODO: Add config option to remove this check, ex 5.7.0 can't be compiled for anything, because its missing from manifest.json
-function M.is_platform_valid_for_device_os(manifest, device_os, platform)
+function M.is_platform_valid_for_device_os(device_os, platform)
   local toolchain = M.getToolchain(manifest, device_os)
   if toolchain == nil then
     return false
@@ -99,22 +99,6 @@ function M.is_platform_valid_for_device_os(manifest, device_os, platform)
   return false
 end
 
--- local function clean()
---   if not utils.exists(Constants.ManifestFile) then
---     if utils.exists(Constants.ManifestVersionFile) then
---       local success, err = os.remove(Constants.ManifestVersionFile)
---       if not success then
---         log:error("Error removing %s, error=%s", Constants.ManifestVersionFile, err)
---       end
---     end
---   elseif not utils.exists(Constants.ManifestVersionFile) then
---     local success, err = os.remove(Constants.ManifestFile)
---     if not success then
---       log:error("Error removing %s, error=%s", Constants.ManifestFile, err)
---     end
---   end
--- end
-
 local function get_current_version_number()
   local manifest_exists = utils.exists(Constants.ManifestFile)
   if not manifest_exists then
@@ -127,7 +111,11 @@ local function get_current_version_number()
     return nil
   end
 
-  local contents = utils.read_file(Constants.ManifestVersionFile)
+  local err, contents = utils.read_file(Constants.ManifestVersionFile)
+  if err ~= nil then
+    log:debug("Unable to open current manifest version, err=%s", err)
+    return nil
+  end
   if not utils.isSemanticVersion(contents) then
     log:debug("Unable to get current manifest version because version string %s is not a semantic version", contents)
     return nil
@@ -145,9 +133,10 @@ local function get_latest_workbench_info()
       "-d", '{"filters": [{"criteria": [{"filterType": 7, "value": "particle.particle-vscode-core"}]}], "flags": 512}',
       "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery"
     }
+  --TODO: Do not warn if not no internet?
     local res, out = utils.run(cmd)
     if not res then
-      log:warn("Failed to curl manifest version, error: ", out)
+      log:warn("Failed to curl manifest version, error: %s", out)
       return nil
     else
       return vim.json.decode(out)

@@ -3,18 +3,20 @@ local log = require("log")
 local Utils = require("utils")
 local Manifest = require("manifest")
 local Compile = require("compile")
-local Settings = require("settings")
+local settings = require("settings")
+local env = require("env")
 local Installed = require("installed")
 local Constants = require("constants")
 local Commands = require("overseer_commands")
 
-local settings = nil
-local env = nil
-local manifest = nil
+--TODO after create config, overseer commands should be registered
+
+-- local manifest = nil
 
 local project_root = nil
 
 local initialized = 0
+local settings_loaded = false
 
 local M = {}
 -- TODO: add way to show user log file location
@@ -31,7 +33,7 @@ function M.get_device_os_ccjson_dir()
   if settings == nil then
     return nil
   end
-  local cc_dir = Compile.get_cc_json_dir(settings)
+  local cc_dir = Compile.get_cc_json_dir()
   if not vim.fn.isdirectory(cc_dir) then
     return nil
   end
@@ -43,7 +45,7 @@ function M.get_query_driver()
   if settings == nil then
     return nil
   end
-  return Settings.get_query_driver(settings)
+  return settings.get_query_driver()
 end
 
 -- TODO: stop searching early if .git found?
@@ -141,7 +143,7 @@ end
 
 function CreateMainMenu(manifest)
   local lines = {}
-  if settings == nil then
+  if not settings_loaded then
     lines = {"Create config"}
   else
     lines = {
@@ -158,7 +160,8 @@ function CreateMainMenu(manifest)
     end
     if item == "Create config" then
       -- TODO: settings should try to find a root-like directory for the project to save to
-      Settings.save(Settings.default(), project_root)
+      settings.new()
+      settings.save(project_root)
       LoadSettings(manifest)
       CreateMainMenu(manifest)
     elseif string.find(item, "Device OS:") then
@@ -176,7 +179,7 @@ function CreateMainMenu(manifest)
 end
 
 function CreateDeviceOSMenu(manifest)
-  local cur = settings["device_os"]
+  local cur = settings.get_device_os()
   local lines = Installed.getDeviceOSs()
 
   local on_submit = function(item)
@@ -185,11 +188,11 @@ function CreateDeviceOSMenu(manifest)
       return
     end
 
-    settings["device_os"] = item
-    if not Manifest.is_platform_valid_for_device_os(manifest, item, settings["platform"]) then
+    settings.set_device_os(item)
+    if not Manifest.is_platform_valid_for_device_os(item, settings.get_platform()) then
       CreatePlatformMenu(manifest)
     else
-      Settings.save(settings)
+      settings.save(project_root)
       LoadSettings(manifest)
       CreateMainMenu(manifest)
     end
@@ -206,15 +209,15 @@ function CreatePlatformMenu(manifest)
   -- Convert platforms from numbers to names
   -- Order us giidm vut consider replacing platform names with display neames as used in vscode
 
-  local cur = settings["platform"]
-  local toolchain = Manifest.getToolchain(manifest, settings["device_os"])
+  local cur = settings.get_platform()
+  local toolchain = Manifest.getToolchain(settings.get_device_os())
   if toolchain == nil then
-    log:error(string.format("Failed to find toolchain for device os %s", settings["device_os"]))
+    log:error(string.format("Failed to find toolchain for device os %s", settings.get_device_os()))
     return
   end
 
   local lines = {}
-  local platformMap = Manifest.getPlatforms(manifest)
+  local platformMap = Manifest.getPlatforms()
   for _, platformId in ipairs(toolchain["platforms"]) do
     local platform = platformMap[platformId]
     table.insert(lines, platform)
@@ -225,8 +228,8 @@ function CreatePlatformMenu(manifest)
       CreateMainMenu(manifest)
       return
     end
-    settings["platform"] = item
-    Settings.save(settings)
+    settings.set_platform(item)
+    settings.save(project_root)
     LoadSettings(manifest)
     CreateMainMenu(manifest)
   end
@@ -237,7 +240,7 @@ function CreatePlatformMenu(manifest)
 end
 
 function CreateCompilerMenu(manifest)
-  local cur = settings["compiler"]
+  local cur = settings.get_compiler()
   local lines = Installed.getCompilers()
 
   local on_submit = function(item)
@@ -245,8 +248,8 @@ function CreateCompilerMenu(manifest)
       CreateMainMenu(manifest)
       return
     end
-    settings["compiler"] = item
-    Settings.save(settings)
+    settings.set_compiler(item)
+    settings.save(project_root)
     LoadSettings(manifest)
     CreateMainMenu(manifest)
   end
@@ -257,8 +260,7 @@ function CreateCompilerMenu(manifest)
 end
 
 function CreateBuildScriptMenu(manifest)
-  local cur = settings["scripts"]
-  local lines = {}
+  local cur = settings.get_scripts()
   local lines = Installed.getBuildScripts()
 
   local on_submit = function(item)
@@ -266,8 +268,8 @@ function CreateBuildScriptMenu(manifest)
       CreateMainMenu(manifest)
       return
     end
-    settings["scripts"] = item
-    Settings.save(settings)
+    settings.set_scripts(item)
+    settings.save(settings)
     LoadSettings(manifest)
     CreateMainMenu(manifest)
   end
@@ -278,27 +280,27 @@ function CreateBuildScriptMenu(manifest)
 end
 
 function LoadSettings(manifest)
-  settings = nil
-  local settings_path = Settings.find()
 
-  log:info("Failed to find %s", Constants.SettingsFile)
-  if settings_path ~= nil then
-    log:info("Loading settings from %s", settings_path)
-    -- TODO: Validate all settings json fields are present/valid
-    settings = Settings.load(settings_path)
-    Compile.setup_cc_json_dir(settings)
-
-    if settings == nil then
-      log:error("Failed to load settings")
-    end
-  else
+  settings_loaded = false
+  local settings_path = settings.find()
+  if settings_path == nil then
     log:info("No settings file found in ", vim.fn.getcwd())
     return nil
   end
 
-  env = nil
-  local platformMap = Manifest.getPlatforms(manifest)
-  env = Settings.getParticleEnv(platformMap, settings, vim.fs.dirname(settings_path))
+  log:info("Loading settings from %s", settings_path)
+  -- TODO: Validate all settings json fields are present/valid
+  local err = settings.load(settings_path)
+  if err ~= nil then
+    log:info("Error in loading settings from %s, err=%s", settings_path, err)
+    return
+  end
+  Compile.setup_cc_json_dir()
+
+  local platformMap = Manifest.getPlatforms()
+  env.setup_env(platformMap, vim.fs.dirname(settings_path))
+  print("env setup")
+  settings_loaded = true
   return settings_path
 end
 
@@ -311,15 +313,9 @@ local function setMappings()
   vim.keymap.set("n", "<leader><leader>p", ":lua require'particle'.project()<cr>", { nowait=false, noremap=true, silent=true, desc = "Launch Particle.nvim local project configuration" })
 end
 
-local function get_env()
-  return settings, env
-end
-
 function M.setup(user_config)
   if initialized == 0 then
     initialized = 1
-      -- vim.defer_fn(function()
-    -- vim.schedule(function()
       config.setup(user_config)
       setMappings()
       Utils.ensure_directory(Constants.DataDir)
@@ -327,7 +323,7 @@ function M.setup(user_config)
       Utils.ensure_directory(Constants.ManifestDir)
       Utils.ensure_directory(Constants.WorkbenchExtractDir)
 
-      manifest = Manifest.setup()
+      local manifest = Manifest.setup()
 
       project_root = LoadSettings(manifest)
       if project_root == nil then
@@ -338,7 +334,7 @@ function M.setup(user_config)
         return
       end
 
-      Commands.setup(get_env)
+      Commands.setup()
       -- local a = 1
       -- while a ~= 5000000000 do
       --   a = a + 1
@@ -349,8 +345,6 @@ function M.setup(user_config)
 
       initialized = 2
       print("init complete")
-    -- end, 10)
-    -- end)
   end
 end
 

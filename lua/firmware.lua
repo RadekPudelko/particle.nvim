@@ -6,7 +6,7 @@ local M = {}
 local deviceOSChangelogPath
 
 function M.getDeviceOSChanges(version)
-    local changelog = Utils.read_file(deviceOSChangelogPath)
+    local err, changelog = Utils.read_file(deviceOSChangelogPath)
 
     -- Versions with hypthens need to have %- to find
     local pattern = "## " .. string.gsub(version, "-", "%%-")

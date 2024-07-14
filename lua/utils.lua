@@ -2,12 +2,14 @@ local M = {}
 
 -- Reads the entire file
 function M.read_file(path)
-  local file = io.open(path, "r")
-  if not file then return end
+  local file, err = io.open(path, "r")
+  if not file then
+    return err, nil
+  end
 
   local txt = file:read("*a")
   file:close()
-  return txt
+  return nil, txt
 end
 
 function M.exists(path)
@@ -66,7 +68,7 @@ function M.string_split(str)
 end
 
 -- synchronous shell command executation using vim.system()
-function M.run(command, output_as_table)
+function M.run(command)
   local result = vim.system(command, { text = true }):wait()
 
   -- print(table.concat(command, " "))

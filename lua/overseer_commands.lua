@@ -1,10 +1,12 @@
+local env = require("env")
+
 local M = {}
 
 -- TODO: Add a precheck for some commands to ensure it is okay to run (ex no other commands running, cc_json dir exists)
 -- TODO: print command?
 -- TODO: Should you be able to switch env if a particle task is running?
 -- TODO: Can you run multiple commands at once?
-function M.setup(get_env)
+function M.setup()
 
   local Commands = require("commands")
   local overseer = require("overseer")
@@ -12,9 +14,8 @@ function M.setup(get_env)
     overseer.register_template({
       name = name,
       builder = function()
-        local settings, env = get_env()
-        local cmd = command(settings, env)
-        local ENV_PATH = env["compiler_path"] .. ":" .. os.getenv("PATH")
+        local cmd = command()
+        local ENV_PATH = env.get_compiler_path() .. ":" .. os.getenv("PATH")
         return {
           name = name,
           cmd = cmd,
