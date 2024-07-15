@@ -165,12 +165,10 @@ function M.setup(user_config)
       project_root = vim.fs.dirname(project_root)
     else
       project_root = M.find_project_root()
-    end
-    log:info("Project root %s", project_root)
-
-    if settings == nil then
+      log:info("No settings found for project %s", project_root)
       return
     end
+
     Commands.setup()
     -- local a = 1
     -- while a ~= 5000000000 do
@@ -180,8 +178,8 @@ function M.setup(user_config)
     --   print("Plugin startup complete.")
     -- end, 10000)  -- 5 seconds delay
 
-    initialized = 2
-    print("init complete")
+    -- initialized = 2
+    -- print("init complete")
   end
 end
 

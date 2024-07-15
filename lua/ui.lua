@@ -4,6 +4,7 @@ local Compile = require("compile")
 local settings = require("settings")
 local env = require("env")
 local Installed = require("installed")
+local Commands = require("overseer_commands")
 
 local M = {}
 
@@ -45,6 +46,7 @@ function M.CreateMainMenu()
       settings.save(env.get_app_dir())
       env.setup_env(env.get_app_dir())
       Compile.setup_cc_json_dir()
+      Commands.setup()
       M.CreateMainMenu()
     elseif string.find(item, "Device OS:") then
       CreateDeviceOSMenu()
