@@ -62,17 +62,11 @@ Install with your favorite plugin manager
   end
 ```
 
-Configuration is currently, limited to setting the logging level.
+Configuration is currently limited to setting the logging level.
 
-## LSP
+## Clangd
 
-There is some configuration required between the LSP and Particle.nvim to launch clangd with the
-propper arguments for each Particle project. This is the most difficult part of configuration as
-it will vary from user to user depending on how their LSP is configured. My configuration can be
-found in a repo called init.lua in https://github.com/RadekPudelko/init.lua/blob/master/lua/me/lazy/lsp.lua.
-
-This configuration step is important to launch clangd with enough information to use the correct
-compiler as the query driver and to use the correct compile_commands.json file.
+I recommend installing clangd via mason.nvim.
 
 ## Bear
 
@@ -86,6 +80,16 @@ On my mac, this involves navigating to /opt/homebrew/Cellar/bear/3.1.3_17/lib/be
 1 of the links 4 times, renaming the copies to arm-none-eabi-cpp, arm-none-eabi-g++, arm-none-eabi-gcc,
 and arm-none-eabi-ld. It doesn't matter which link you copy, as they all point to the same wrapper. This
 allows bear to intercept the compile commands and create the compile_commands.json files.
+
+## LSP
+
+There is some configuration required between the LSP and Particle.nvim to launch clangd with the
+propper arguments for each Particle project. This is the most difficult part of configuration as
+it will vary from user to user depending on how their LSP is configured. My configuration can be
+found in a repo called init.lua in https://github.com/RadekPudelko/init.lua/blob/master/lua/me/lazy/lsp.lua.
+
+This configuration step is important to launch clangd with enough information to use the correct
+compiler as the query driver and to use the correct compile_commands.json file.
 
 ## Other Requirements
 
