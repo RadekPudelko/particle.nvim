@@ -199,8 +199,7 @@ local function extract_workbench()
 end
 
 local function find_manifest_json(search_dir)
-  local results = vim.fs.find({"manifest.json", type = "file", path = search_dir})
-
+  local results = vim.fs.find({"manifest.json"}, {type = "file", path = search_dir, upward = false})
   if #results == 0 then
     log:error("Failed to find manifest.json in %s", search_dir)
     return nil
@@ -264,7 +263,6 @@ function M.setup()
   end
 
   -- TODO: Choose the latest
-  -- print(vim.inspect(workbench_json))
   local versions = workbench_json["results"][1]["extensions"][1]["versions"][1]
   if #versions > 1 then
     log:debug("There are %d particle workbench versions available", #versions)
@@ -297,6 +295,7 @@ function M.setup()
   end
 
   local manifest_path = find_manifest_json(Constants.WorkbenchExtractDir)
+  log:info("Found manifest at %s", manifest_path)
   if manifest_path == nil then
     -- Fallback to local manifset file
     return loadParticleManifest(Constants.ManifestFile)

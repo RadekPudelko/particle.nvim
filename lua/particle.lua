@@ -120,7 +120,7 @@ end
 function LoadSettings()
   local settings_path = settings.find()
   if settings_path == nil then
-    log:info("No settings file found in ", vim.fn.getcwd())
+    log:info("No settings file found in %s", vim.fn.getcwd())
     return nil
   end
 
@@ -154,7 +154,6 @@ function M.setup(user_config)
     Utils.ensure_directory(Constants.DataDir)
     Utils.ensure_directory(Constants.OSCCJsonDir)
     Utils.ensure_directory(Constants.ManifestDir)
-    Utils.ensure_directory(Constants.WorkbenchExtractDir)
 
     local err = Manifest.setup()
     if err ~= nil then
