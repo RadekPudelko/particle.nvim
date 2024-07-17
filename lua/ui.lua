@@ -5,6 +5,8 @@ local settings = require("settings")
 local env = require("env")
 local Installed = require("installed")
 local Commands = require("overseer_commands")
+local particle_utils = require("particle_utils")
+local Constants = require("constants")
 
 local M = {}
 
@@ -41,12 +43,16 @@ function M.CreateMainMenu()
       return
     end
     if item == "Create config" then
+
       -- TODO: settings should try to find a root-like directory for the project to save to
       settings.new()
-      settings.save(env.get_app_dir())
-      env.setup_env(env.get_app_dir())
+
+      local project_root = particle_utils.find_project_root()
+      settings.save(project_root)
       Compile.setup_cc_json_dir()
+      env.setup_env(project_root)
       Commands.setup()
+
       M.CreateMainMenu()
     elseif string.find(item, "Device OS:") then
       CreateDeviceOSMenu()
