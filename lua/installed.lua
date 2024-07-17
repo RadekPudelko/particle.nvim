@@ -4,7 +4,6 @@ local Constants = require("constants")
 local M = {}
 
 -- TODO: handle any path
--- function M.getAllDeviceOS(DeviceOSDirectory)
 function M.getDeviceOSs()
   local isDeviceOS = function(name, type)
     if type == "directory" and Utils.isSemanticVersion(name) then

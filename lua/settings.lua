@@ -1,4 +1,6 @@
 local Constants = require("constants")
+local Manifest = require("manifest")
+local installed = require("installed")
 local Utils = require("utils")
 local log = require("log")
 
@@ -8,12 +10,51 @@ local settings = {}
 local settings_loaded = false
 
 -- TODO: these defaults need to be generated according to whats installed locally or blank
-function M.new()
+function M.new2()
   settings = {
     ["device_os"] = "6.1.0",
     ["platform"] = "bsom",
     ["compiler"] = "10.2.1",
     ["scripts"] = "1.15.0"
+  }
+  settings_loaded = true
+end
+
+-- Use first found of each setting as the default
+function M.new()
+  local device_oss = installed.getDeviceOSs()
+  if #device_oss == 0 then
+    return string.format("Could not find any local device OS in %s", Constants.DeviceOSDirectory)
+  end
+
+  local toolchain = Manifest.getToolchain(device_oss[1])
+  if toolchain == nil then
+    return string.format("Failed to find toolchain for device os %s", device_oss)
+  end
+  if #toolchain["platforms"] == 0 then
+    return string.format("Could not find any platforms for device OS %s", device_oss)
+  end
+  local platformMap = Manifest.getPlatforms()
+  local platform = platformMap[toolchain["platforms"][1]]
+  if platform == nil then
+    return string.format("Could not find any platform mapping for platform id %d in device OS %s", toolchain["platforms"][1], device_oss)
+  end
+
+  local compilers = installed.getCompilers()
+  if #compilers == 0 then
+    return string.format("Could not find any local compiler in %s", Constants.CompilerDirectory)
+  end
+
+  local scripts = installed.getBuildScripts()
+  if #scripts == 0 then
+    return string.format("Could not find any local build script in %s", Constants.BuildScriptsDirectory)
+  end
+
+  settings = {
+    ["device_os"] = device_oss[1],
+    ["platform"] = platform,
+    ["compiler"] = compilers[1],
+    ["scripts"] = scripts[1]
   }
   settings_loaded = true
 end

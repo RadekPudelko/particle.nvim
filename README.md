@@ -49,6 +49,9 @@ and more. This file is available only as a part of the Particle Workbench. To ke
 Particle.nvim will check on startup if there is a new version of Particle Workbench and download/extract the new manifest
 file.
 
+New project configuration will look into where your Particle Workbench stores device os, compilers and buildscripts and will use the first of each
+for the default configuration, so these must already be installed to use Particle.nvim.
+
 ### Compile Commands JSON
 
 Particle projects are usually split into the device os and user application components. Because of this there are 2
