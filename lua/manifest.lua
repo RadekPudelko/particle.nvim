@@ -14,7 +14,8 @@ local M = {}
 
 local manifest = {}
 
-local function loadParticleManifest(path)
+-- TODO: check decode ok
+function M.loadParticleManifest(path)
   local file, err = io.open(path, "r")
   if not file then
     return string.format("Failed to open manifest file=%s err=%s", path, err)
@@ -119,7 +120,7 @@ function M.is_platform_valid_for_device_os(device_os, platform)
   return false
 end
 
-local function get_current_version_number()
+function M.get_current_version_number()
   local manifest_exists = utils.exists(Constants.ManifestFile)
   if not manifest_exists then
     log:debug("Unable to get current manifest version because manifest file doesn't exist")
@@ -246,7 +247,7 @@ local function finalize_manifest(manifest_path, version_string)
 end
 
 function M.setup()
-  local current_version = get_current_version_number()
+  local current_version = M.get_current_version_number()
   local workbench_json = get_latest_workbench_info()
   if workbench_json == nil then
     if current_version == nil then
@@ -254,7 +255,7 @@ function M.setup()
       return string.format("Unable to load manifest file")
     end
     -- Fallback to local manifset file
-    local err = loadParticleManifest(Constants.ManifestFile)
+    local err = M.loadParticleManifest(Constants.ManifestFile)
     if err ~= nil then
       -- log:error("Failed to load local particle manifest, err=%s")
       return string.format("Failed to load local particle manifest, err=%s")
@@ -272,37 +273,37 @@ function M.setup()
   -- TODO: download workbench if current fails to load?
   if not utils.isSemanticVersion(latest_version_string) then
     log:error("Latest manifest version string is not a semantic version", latest_version_string)
-    return loadParticleManifest(Constants.ManifestFile)
+    return M.loadParticleManifest(Constants.ManifestFile)
   end
 
   local latest_version = utils.parseSemanticVersion(latest_version_string)
   if current_version and utils.compare_semantic_verions(current_version, latest_version) ~= 1 then
-      return loadParticleManifest(Constants.ManifestFile)
+      return M.loadParticleManifest(Constants.ManifestFile)
   end
 
   local err = download_workbench()
   if err ~= nil then
     log:error("Failed to download workbench, err=%s", err)
     -- Fallback to local manifset file
-    return loadParticleManifest(Constants.ManifestFile)
+    return M.loadParticleManifest(Constants.ManifestFile)
   end
 
   err = extract_workbench()
   if err ~= nil then
     log:error("Failed to extract workbench, err=%s", err)
     -- Fallback to local manifset file
-    return loadParticleManifest(Constants.ManifestFile)
+    return M.loadParticleManifest(Constants.ManifestFile)
   end
 
   local manifest_path = find_manifest_json(Constants.WorkbenchExtractDir)
   log:info("Found manifest at %s", manifest_path)
   if manifest_path == nil then
     -- Fallback to local manifset file
-    return loadParticleManifest(Constants.ManifestFile)
+    return M.loadParticleManifest(Constants.ManifestFile)
   end
 
   finalize_manifest(manifest_path, latest_version_string)
-  return loadParticleManifest(Constants.ManifestFile)
+  return M.loadParticleManifest(Constants.ManifestFile)
 end
 
 return M

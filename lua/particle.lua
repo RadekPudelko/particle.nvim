@@ -111,16 +111,82 @@ function M.setup(user_config)
     end
 
     Commands.setup()
-    -- local a = 1
-    -- while a ~= 5000000000 do
-    --   a = a + 1
-    -- end
-    --   -- Your startup code here
-    --   print("Plugin startup complete.")
-    -- end, 10000)  -- 5 seconds delay
+  end
+end
 
-    -- initialized = 2
-    -- print("init complete")
+function M.setup2(user_config)
+  if initialized == 0 then
+    initialized = 1
+    config.setup(user_config)
+    setMappings()
+    Utils.ensure_directory(Constants.DataDir)
+    Utils.ensure_directory(Constants.OSCCJsonDir)
+    Utils.ensure_directory(Constants.ManifestDir)
+    ----------------------------------
+
+    local current_version = M.get_current_version_number()
+
+    local thread = coroutine.create(function()
+      local thread = coroutine.running()
+
+      -- Check for new Particle workbench version
+      local workbench_json
+      local command = {
+        "curl",
+        "-sS",
+        "-X", "POST",
+        "-H", "Accept: application/json; charset=utf-8; api-version=7.2-preview.1",
+        "-H", "Content-Type: application/json",
+        "-d", '{"filters": [{"criteria": [{"filterType": 7, "value": "particle.particle-vscode-core"}]}], "flags": 512}',
+        "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery"
+      }
+      vim.system(command, {text=true}, function(obj)
+        if obj.code ~= 0 then
+          log:warn("Failed to curl manifest version, code=%d, error=%s", obj.code, obj.stderr)
+          return
+        else
+          workbench_json = vim.json.decode(obj.stdout)
+          coroutine.resume(thread)
+        end
+      end)
+      coroutine.yield()
+
+      if workbench_json == nil then
+        log:error("Failed to deserialize workbench json")
+        if current_version == nil then
+          log:error("Unable to fallback to local manifest")
+          return
+        end
+
+        -- Fallback to local manifset file
+        local err = M.loadParticleManifest(Constants.ManifestFile)
+        if err ~= nil then
+          log:error("Failed to fallback to local particle manifest, err=%s", err)
+        end
+        return
+      end
+
+      -- Next commnad
+    end)
+    coroutine.resume(thread)
+
+
+
+    local err = Manifest.setup()
+    if err ~= nil then
+      log:error("Failed to load manifest, err=%s", err)
+    end
+
+    local project_root = particle_utils.LoadSettings()
+    if project_root ~= nil then
+      project_root = vim.fs.dirname(project_root)
+    else
+      project_root = particle_utils.find_project_root()
+      log:info("No settings found for project %s", project_root)
+      return
+    end
+
+    Commands.setup()
   end
 end
 
