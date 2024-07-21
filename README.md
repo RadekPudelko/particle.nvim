@@ -3,29 +3,15 @@
 
 The unofficial Neovim plugin for Particle IO firmware development.
 
-The purpose of Particle.nvim is to provide near plug-n-play functionality in Neovim for developing
-Particle IO devices in the same way that Particle's Workbench extension does for VSCode.
+The purpose of Particle.nvim is to provide near plug-n-play functionality in Neovim for developing Particle IO devices in the same way that Particle's Workbench extension does for VSCode.
 
-The biggest challenge to firmware development on Particle device in Neovim for me was the LSP setp
-for jump to definitions, hints and autocomplete. Coming from VSCode, which has an official
-extension made by Particle, this stuff is all taken care of, so it was not obvious at first
-how to set this up in Neovim.
+The biggest challenge to firmware development on Particle device in Neovim for me was the LSP setpfor jump to definitions, hints and autocomplete. Coming from VSCode, which has an official extension made by Particle, this stuff is all taken care of, so it was not obvious at first how to set this up in Neovim.
 
-Eventually, after learning about LSPs, clangd and bear, I was able to get better LSP functionality than what
-was available via Intellisense in VSCode. My setup provides hints that bring the user to exact location of whatever
-code I was looking at, regardless of if its in the application or device os.
+Eventually, after learning about LSPs, clangd and bear, I was able to get better LSP functionality than what was available via Intellisense in VSCode. My setup provides hints that bring the user to exact location of whatever code I was looking at, regardless of if its in the application or device os.
 
-Clangd is the main LSP for cpp development on Neovim, information about a project can be supplied via
-compile_commands.json files, which contain compliation information about each file in the project.
-Particle workbench in VSCode does something simillar by feeding Intellisense with a static compile_flags.txt.
-This does not provide nearly as much detail to the clangd as a compile_flags.json would, as it is a static file
-that does not capture all the detailthat comes with compiling the device os and user application, leading to slow
-and inaccurate LSP hits and autocompletion.
+Clangd is the main LSP for cpp development on Neovim, information about a project can be supplied via compile_commands.json files, which contain compliation information about each file in the project. Particle workbench in VSCode does something simillar by feeding Intellisense with a static compile_flags.txt. This does not provide nearly as much detail to the clangd as a compile_flags.json would, as it is a static file that does not capture all the detailthat comes with compiling the device os and user application, leading to slow and inaccurate LSP hits and autocompletion.
 
-Bear is a program used to create compile_commands.json files. It works by intercepting compile commands via
-a wrapper. Originally, I used a custom Makefile to wrap all of the Particle compile and flash commands with bear.
-Now, Particle.nvim integrates these commands into Neovim with the help of Overseer.nvim, which provides
-a ui interface for running commands and seeing the output.
+Bear is a program used to create compile_commands.json files. It works by intercepting compile commands via a wrapper. Originally, I used a custom Makefile to wrap all of the Particle compile and flash commands with bear. Now, Particle.nvim integrates these commands into Neovim with the help of Overseer.nvim, which provides a ui interface for running commands and seeing the output.
 
 ## Demo
 
