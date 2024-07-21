@@ -6,12 +6,14 @@ The unofficial Neovim plugin for Particle IO firmware development.
 The purpose of Particle.nvim is to provide near plug-n-play functionality in Neovim for developing
 Particle IO devices in the same way that Particle's Workbench extension does for VSCode.
 
-The biggest challenge to firmware development on Particle device in Neovim for me was the LSP setup
-ability to jump to propper definitions, hints and autocomplete. Coming from VSCode, which has an official
-extension made by Particle, it was not obvious at first how to set all of this happen in Neovim.
+The biggest challenge to firmware development on Particle device in Neovim for me was the LSP setp
+for jump to definitions, hints and autocomplete. Coming from VSCode, which has an official
+extension made by Particle, this stuff is all taken care of, so it was not obvious at first
+how to set this up in Neovim.
 
 Eventually, after learning about LSPs, clangd and bear, I was able to get better LSP functionality than what
-was available via Intellisense in VSCode.
+was available via Intellisense in VSCode. My setup provides hints that bring the user to exact location of whatever
+code I was looking at, regardless of if its in the application or device os.
 
 Clangd is the main LSP for cpp development on Neovim, information about a project can be supplied via
 compile_commands.json files, which contain compliation information about each file in the project.
@@ -39,33 +41,32 @@ Downloading new device os is currently not supported, so use Particle Workbench 
 
 ### Project Configuration
 
-Project configuration is stored locally per project in a .particle.nvim.json file. This file is configured via Particle user command.
+Project configuration is stored locally per project in a .particle.nvim.json file. This file is configured via the `:Particle` user command.
 
 ![Project Configuration](/pictures/project_configuration.png)
 
 I tried to make the behavior of Particle.nvim as close as possible to Particle Workbench. To do this, Particle.nvim relies
-on a file called manifest.json, which contains information about all of the available device oses available, valid platforms
+on a file called `manifest.json`, which contains information about all of the available device oses available, valid platforms
 and more. This file is available only as a part of the Particle Workbench. To keep an upto date version of this file,
 Particle.nvim will check on startup if there is a new version of Particle Workbench and download/extract the new manifest
 file.
 
-New project configuration will look into where your Particle Workbench stores device os, compilers and buildscripts and will use the first of each
+New project configuration will look into where your Particle Workbench stores the `device os`, `compilers` and `buildscripts` and will use the first of each
 for the default configuration, so these must already be installed to use Particle.nvim.
 
 ### Compile Commands JSON
 
-Particle projects are usually split into the device os and user application components. Because of this there are 2
-compile_commands.json files per project. The user portion is stored with the project, while the device os portion
+Particle projects are usually split into the `device os` and `user application` components. Because of this there are 2
+`compile_commands.json` files per project. The user portion is stored with the project, while the device os portion
 is stored in the vim data path for Particle.nvim (~/.local/share/nvim/particle).
 
-When browsing the user code, Particle.nvim can supply the user compile_commands.json directory. When you jump into the
+When browsing the user code, Particle.nvim can supply the user compile_commands.json to clangd. When you jump into the
 device os portion or browse device os code, Particle.nvim can supply the compile_commands.json for the device os. Note,
-this is done via LSP configuration in the user's config for clangd, which will be demonstrated below.
-
+this is done via LSP configuration in the user's config for clangd using the `compile-commands-dir` argument, which will be demonstrated below.
 
 ### Commands Available
 
-Particle commands are provided via Overseer.nvim after a particle project configuration is created. The way these commands work
+Particle commands are provided via `Overseer.nvim` after a particle project configuration is created. The way these commands work
 in Particle Workbench is to call the buildscript with the parameters for the project (device os, platform, application directory).
 Particle.nvim takes the same approach, but makes a few changes to the commands so that compile_commands.json files can be created.
 
@@ -80,7 +81,7 @@ Particle.nvim takes the same approach, but makes a few changes to the commands s
 - Flash All - Flashes the device os and user application, wrapped with bear
 - Clean All - Cleans the device os and user application, deleting the device os and user compile_commands.json files.
 
-These commands are available via :OverseerRun.
+These commands are available via `:OverseerRun` for projects setup via Particle.nvim.
 
 The user commands will run the buildscript directly, while the OS commands were created based on what the buildscript does
 when it compiles the device os portion (calls an internal makefile in the deivce os modules folder). The reason for this
@@ -89,10 +90,11 @@ device os code.
 
 The all commands are a combination of the OS and user commands.
 
-The command history, status and output can be seen via :OverseerToggle.
+The command history, status and output can be seen via `:OverseerToggle`.
+
+Additionally, notifications of when commands complete are available via Overseer's tie in with the `nvim-notify` plugin.
 
 ![Overseer Task View](/pictures/overseer.png)
-
 
 
 ### Typical workflow
@@ -109,7 +111,7 @@ The command history, status and output can be seen via :OverseerToggle.
 
 ## Neovim
 
-Install with your favorite plugin manager
+Install with your plugin manager
 
 ```lua
 -- Lazy.nvim
@@ -126,7 +128,7 @@ Install with your favorite plugin manager
         {
           type = "file",
           filename = "particle.log",
-          level = vim.log.levels.WARN,
+          level = vim.log.levels.DEBUG,
         }
       }
     })
@@ -137,27 +139,31 @@ Configuration is currently limited to setting the logging level.
 
 ## Clangd
 
-I recommend installing clangd via mason.nvim.
+I recommend installing clangd via `mason.nvim`.
 
 ## Bear
 
-Bear is available on github and on most system package managers. At the time of this writing,
+`Bear` is available on github and on most system package managers. At the time of this writing,
 bear does not automatically provide the compiler wrappers necessary to intercept commands
-for arm-none-eabi compilers. These wrappers are really just symbolic links to bear's wrapper
+for `arm-none-eabi` compilers. These wrappers are really just symbolic links to bear's wrapper
 binary, so all we have to do to make bear work with the arm compiler is to make a few copies of
 the links and rename them.
 
 On my mac, this involves navigating to /opt/homebrew/Cellar/bear/3.1.3_17/lib/bear/wrapper.d and copying
-1 of the links 4 times, renaming the copies to arm-none-eabi-cpp, arm-none-eabi-g++, arm-none-eabi-gcc,
-and arm-none-eabi-ld. It doesn't matter which link you copy, as they all point to the same wrapper. This
+1 of the links 4 times, renaming the copies to `arm-none-eabi-cpp`, `arm-none-eabi-g++,` `arm-none-eabi-gcc`,
+and `arm-none-eabi-ld`. It doesn't matter which link you copy, as they all point to the same wrapper. This
 allows bear to intercept the compile commands and create the compile_commands.json files.
+
+Here's what my wrapper.d folder looks like for my bear install.
+
+![Bear wrappers](/pictures/bear_wrappers.png)
 
 ## LSP Integration
 
 Particle.nvim handles the compile_commands.json creation and needs to be integrated with your
 LSP config to launch clangd with the propper commands in Particle projects. This is the most
 difficult part of installation as it will vary from user to user depending on how their LSP
-is configured. My configuration can be found in a repo called init.lua
+is configured. My configuration can be found in my repo called `init.lua`
 in file https://github.com/RadekPudelko/init.lua/blob/master/lua/me/lazy/lsp.lua.
 
 This configuration step is important to launch clangd with enough information to use the correct
@@ -232,7 +238,7 @@ end
 
 curl utility
 
-Particle.nvim has been developed on a mac, I expect it should work on Linux just fine, but
+Particle.nvim has been developed on a mac, I expect it should work on Linux, but
 it is not setup to work on Windows, except maybe if you are using WSL.
 
 
@@ -247,6 +253,8 @@ https://github.com/RadekPudelko/ParticleMakefile
 https://github.com/stevearc/overseer.nvim
 
 https://github.com/stevearc/dressing.nvim
+
+https://github.com/rcarriga/nvim-notify?tab=readme-ov-file#viewing-history
 
 https://github.com/RadekPudelko/init.lua
 
