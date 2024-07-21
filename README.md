@@ -5,7 +5,7 @@ The unofficial Neovim plugin for Particle IO firmware development.
 
 The purpose of Particle.nvim is to provide near plug-n-play functionality in Neovim for developing Particle IO devices in the same way that Particle's Workbench extension does for VSCode.
 
-The biggest challenge to firmware development on Particle device in Neovim for me was the LSP setpfor jump to definitions, hints and autocomplete. Coming from VSCode, which has an official extension made by Particle, this stuff is all taken care of, so it was not obvious at first how to set this up in Neovim.
+The biggest challenge to firmware development on Particle device in Neovim for me was the LSP setup for jump to definitions, hints and autocomplete. Coming from VSCode, which has an official extension made by Particle, this stuff is all taken care of, so it was not obvious at first how to set this up in Neovim.
 
 Eventually, after learning about LSPs, clangd and bear, I was able to get better LSP functionality than what was available via Intellisense in VSCode. My setup provides hints that bring the user to exact location of whatever code I was looking at, regardless of if its in the application or device os.
 

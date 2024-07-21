@@ -11,7 +11,8 @@ local particle_utils = require("particle_utils")
 local ui = require("ui")
 local utils = require("utils")
 
---TODO after create config, overseer commands should be registered
+--TODO: Looks like switch platform doesn't give that new platforms compile-commands-dir when entering device os until
+--nvim is reset
 
 local initialized = 0
 
