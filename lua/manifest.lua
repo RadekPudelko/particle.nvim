@@ -199,48 +199,48 @@ local function extract_workbench()
   end
 end
 
-local function find_manifest_json(search_dir)
+function M.find_manifest_json(search_dir)
   local results = vim.fs.find({"manifest.json"}, {type = "file", path = search_dir, upward = false})
   if #results == 0 then
-    log:error("Failed to find manifest.json in %s", search_dir)
     return nil
   end
 
   return results[1]
 end
 
-local function finalize_manifest(manifest_path, version_string)
+function M.finalize_manifest(manifest_path, version_string)
   if utils.exists(Constants.ManifestVersionFile) then
     local success, err = os.remove(Constants.ManifestVersionFile)
     if not success then
-      log:error("Error removing %s, error=%s", Constants.ManifestVersionFile, err)
+      log:serror("Error removing %s, error=%s", Constants.ManifestVersionFile, err)
     end
   end
 
   if utils.exists(Constants.ManifestFile) then
     local success, err = os.remove(Constants.ManifestFile)
     if not success then
-      log:error("Error removing %s, error=%s", Constants.ManifestFile, err)
+      log:serror("Error removing %s, error=%s", Constants.ManifestFile, err)
     end
   end
 
   local success, err = os.rename(manifest_path, Constants.ManifestFile)
   if not success then
-    log:error("Error moving %s to %s, error=%s", manifest_path, Constants.ManifestFile, err)
+    log:serror("Error moving %s to %s, error=%s", manifest_path, Constants.ManifestFile, err)
   end
 
   -- if utils.exists(Constants.WorkbenchExtractDir) then
   if utils.exists(Constants.WorkbenchExtractDir) then
     success, err = vim.fn.delete(Constants.WorkbenchExtractDir, "rf")
     if success ~= 0 then
-      log:error("Error removing %s, error=%s", Constants.WorkbenchExtractDir, err)
+      print("1")
+      log:serror("Error removing %s, error=%s", Constants.WorkbenchExtractDir, err)
     end
   end
 
   local file
   file, err = io.open(Constants.ManifestVersionFile, "w")
   if not file then
-    log:error("Error opening file=%s, err=%s", Constants.ManifestVersionFile, err)
+    log:serror("Error opening file=%s, err=%s", Constants.ManifestVersionFile, err)
   end
   file:write(version_string)
   file:close()
@@ -295,14 +295,14 @@ function M.setup()
     return M.loadParticleManifest(Constants.ManifestFile)
   end
 
-  local manifest_path = find_manifest_json(Constants.WorkbenchExtractDir)
+  local manifest_path = M.find_manifest_json(Constants.WorkbenchExtractDir)
   log:info("Found manifest at %s", manifest_path)
   if manifest_path == nil then
     -- Fallback to local manifset file
     return M.loadParticleManifest(Constants.ManifestFile)
   end
 
-  finalize_manifest(manifest_path, latest_version_string)
+  M.finalize_manifest(manifest_path, latest_version_string)
   return M.loadParticleManifest(Constants.ManifestFile)
 end
 

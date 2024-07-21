@@ -156,6 +156,13 @@ function Log:log(level, msg, ...)
   end
 end
 
+function Log:slog(level, msg, ...)
+  local args = {...}
+  vim.schedule(function()
+    self:log(level, msg, unpack(args))
+  end)
+end
+
 function Log:trace(...)
   self:log(vim.log.levels.TRACE, ...)
 end
@@ -174,6 +181,26 @@ end
 
 function Log:error(...)
   self:log(vim.log.levels.ERROR, ...)
+end
+
+function Log:strace(...)
+  self:slog(vim.log.levels.TRACE, ...)
+end
+
+function Log:sdebug(...)
+  self:slog(vim.log.levels.DEBUG, ...)
+end
+
+function Log:sinfo(...)
+  self:slog(vim.log.levels.INFO, ...)
+end
+
+function Log:swarn(...)
+  self:slog(vim.log.levels.WARN, ...)
+end
+
+function Log:serror(...)
+  self:slog(vim.log.levels.ERROR, ...)
 end
 
 local root = Log.new({

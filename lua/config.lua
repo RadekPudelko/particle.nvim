@@ -7,7 +7,8 @@ local default_config = {
     {
       type = "file",
       filename = "particle.log",
-      level = vim.log.levels.WARN,
+      -- level = vim.log.levels.WARN,
+      level = vim.log.levels.DEBUG,
     },
   },
 }
