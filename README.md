@@ -27,6 +27,16 @@ a wrapper. Originally, I used a custom Makefile to wrap all of the Particle comp
 Now, Particle.nvim integrates these commands into Neovim with the help of Overseer.nvim, which provides
 a ui interface for running commands and seeing the output.
 
+## Demo
+
+Here is a short demo of a Particle project showing some of the feature of Particle.nvim. I show
+that I can jump around through the project, into the device os to inspect the Log.info function.
+I also jump into another file in my applicaton firmware to look at the test function in utils.cpp. I then
+show autocomplete suggestions for the test() function. Finally, I show how the project is recompiled
+after the test() function is added.
+
+![Particle.nvim Demo](https://drive.google.com/file/d/1AWlkyv1VHXdVBJA60u9aOlnx5W6tuyI2/view?usp=sharing)
+
 
 ## Features
 
@@ -43,7 +53,7 @@ Downloading new device os is currently not supported, so use Particle Workbench 
 
 Project configuration is stored locally per project in a .particle.nvim.json file. This file is configured via the `:Particle` user command.
 
-![Project Configuration](/pictures/project_configuration.png)
+![Project Configuration](https://drive.google.com/file/d/1Q1qFgMVX7WD4lFTfXWQLuN9j06VYbHxC/view?usp=sharing)
 
 I tried to make the behavior of Particle.nvim as close as possible to Particle Workbench. To do this, Particle.nvim relies
 on a file called `manifest.json`, which contains information about all of the available device oses available, valid platforms
@@ -70,7 +80,7 @@ Particle commands are provided via `Overseer.nvim` after a particle project conf
 in Particle Workbench is to call the buildscript with the parameters for the project (device os, platform, application directory).
 Particle.nvim takes the same approach, but makes a few changes to the commands so that compile_commands.json files can be created.
 
-![Commands via Overseer](/pictures/commands.png)
+![Commands via Overseer](https://drive.google.com/file/d/10Shyhrc2HJgSOam_wmyMR1xKNLpyxrx6/view?usp=sharing)
 
 - Compile User - Compile user application, wrapped with bear
 - Flash User - Flash user application, wrapped with bear
@@ -94,7 +104,7 @@ The command history, status and output can be seen via `:OverseerToggle`.
 
 Additionally, notifications of when commands complete are available via Overseer's tie in with the `nvim-notify` plugin.
 
-![Overseer Task View](/pictures/overseer.png)
+![Overseer Task View](https://drive.google.com/file/d/1Fltusl4R6h12YN6Z0WDHWfUlvffAUSw4/view?usp=sharing)
 
 
 ### Typical workflow
@@ -156,7 +166,7 @@ allows bear to intercept the compile commands and create the compile_commands.js
 
 Here's what my wrapper.d folder looks like for my bear install after I added the 4 links from above.
 
-![Bear wrappers](/pictures/bear_wrappers.png)
+![Bear wrappers](https://drive.google.com/file/d/1EWDYMsyDt6tBF6pzqB1swKzWMB2YCG3G/view?usp=sharing)
 
 ## LSP Integration
 
