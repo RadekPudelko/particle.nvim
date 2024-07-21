@@ -19,6 +19,8 @@ local M = {}
 -- TODO: add way to show user log file location
 -- TODO: add way to quickly open log file, like LspLog command
 
+-- TODO: these are duplicated here just for export reasons, figure out how to export
+-- from particle_utils directly
 M.PROJECT_DEVICE_OS = 1
 M.PROJECT_LOCAL= 2
 

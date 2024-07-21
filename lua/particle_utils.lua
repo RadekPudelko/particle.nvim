@@ -6,6 +6,8 @@ local Constants = require("constants")
 
 local M = {}
 
+M.PROJECT_DEVICE_OS = 1
+M.PROJECT_LOCAL= 2
 
 -- TODO: stop searching early if .git found?
 -- TODO: unit test this

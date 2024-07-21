@@ -154,7 +154,7 @@ On my mac, this involves navigating to /opt/homebrew/Cellar/bear/3.1.3_17/lib/be
 and `arm-none-eabi-ld`. It doesn't matter which link you copy, as they all point to the same wrapper. This
 allows bear to intercept the compile commands and create the compile_commands.json files.
 
-Here's what my wrapper.d folder looks like for my bear install.
+Here's what my wrapper.d folder looks like for my bear install after I added the 4 links from above.
 
 ![Bear wrappers](/pictures/bear_wrappers.png)
 
