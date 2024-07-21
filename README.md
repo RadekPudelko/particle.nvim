@@ -35,7 +35,7 @@ I also jump into another file in my applicaton firmware to look at the test func
 show autocomplete suggestions for the test() function. Finally, I show how the project is recompiled
 after the test() function is added.
 
-![Particle.nvim Demo](https://drive.google.com/file/d/1AWlkyv1VHXdVBJA60u9aOlnx5W6tuyI2/view?usp=sharing)
+[[https://drive.google.com/file/d/1AWlkyv1VHXdVBJA60u9aOlnx5W6tuyI2/view?usp=sharing|Particle.nvim Demo]]
 
 
 ## Features
