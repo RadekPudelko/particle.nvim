@@ -119,12 +119,12 @@ function M.setup2(user_config)
 end
 
 -- Fallback to local manifset file
-local function fallback()
+local function fallback_co()
   local thread = coroutine.running()
   vim.schedule(function()
     local err = Manifest.loadParticleManifest(Constants.ManifestFile)
     if err ~= nil then
-      log:error("Failed to fallback to local particle manifest, err=%s", err)
+      log:error("Failed to fallback_co to local particle manifest, err=%s", err)
     end
 
     local project_root = particle_utils.LoadSettings()
@@ -140,6 +140,25 @@ local function fallback()
   end)
   coroutine.yield()
 end
+
+local function fallback_sched()
+  vim.schedule(function()
+    local err = Manifest.loadParticleManifest(Constants.ManifestFile)
+    if err ~= nil then
+      log:error("Failed to fallback_co to local particle manifest, err=%s", err)
+    end
+
+    local project_root = particle_utils.LoadSettings()
+    if project_root ~= nil then
+      project_root = vim.fs.dirname(project_root)
+      Commands.setup()
+    else
+      project_root = particle_utils.find_project_root()
+      log:info("No settings found for project %s", project_root)
+    end
+  end)
+end
+
 
 -- Need to scheduled log and schedule fs operations in coroutine
 function M.setup(user_config)
@@ -173,22 +192,22 @@ function M.setup(user_config)
         if obj.code ~= 0 then
           log:swarn("Failed to curl manifest version, code=%d, error=%s", obj.code, obj.stderr)
           log:sdebug("command: %s", table.concat(command, " "))
-          return
+          return fallback_sched()
         else
           workbench_json = vim.json.decode(obj.stdout)
-          coroutine.resume(thread)
         end
+        coroutine.resume(thread)
       end)
       coroutine.yield()
 
       if workbench_json == nil then
         log:serror("Failed to deserialize workbench json")
         if current_version == nil then
-          log:serror("Unable to fallback to local manifest")
+          log:serror("Unable to fallback_co to local manifest")
           return
         end
         log:serror("New workbench json deserialization failed")
-        return fallback()
+        return fallback_co()
       end
       log:sdebug("Successfuly curled new manifest version json")
 
@@ -204,13 +223,13 @@ function M.setup(user_config)
       -- TODO: download workbench if current fails to load?
       if not utils.isSemanticVersion(latest_version_string) then
         log:serror("Latest manifest version string is not a semantic version", latest_version_string)
-        return fallback()
+        return fallback_co()
       end
 
       local latest_version = utils.parseSemanticVersion(latest_version_string)
       if current_version and utils.compare_semantic_verions(current_version, latest_version) ~= 1 then
         log:sdebug("Current manifest version is newer or same as the lastest")
-        return fallback()
+        return fallback_co()
       end
 
       -- There is a newer Particle Workbench, available, download it
@@ -225,7 +244,7 @@ function M.setup(user_config)
         if obj.code ~= 0 then
           log:swarn("Failed to curl latest workbench, code=%d, error=%s", obj.code, obj.stderr)
           log:sdebug("command: %s", table.concat(command, " "))
-          return fallback()
+          return fallback_co()
         else
           coroutine.resume(thread)
         end
@@ -244,7 +263,7 @@ function M.setup(user_config)
         if obj.code ~= 0 then
           log:serror("Failed to extract workbench, code=%d, error=%s", obj.code, obj.stderr)
           log:sdebug("command: %s", table.concat(command, " "))
-          return fallback()
+          return fallback_co()
         else
           log:sdebug("Extract workbench success")
           coroutine.resume(thread)
@@ -269,7 +288,7 @@ function M.setup(user_config)
       if manifest_path == nil then
         -- Fallback to local manifset file
         log:serror("Failed to find manifest.json in %s", Constants.WorkbenchExtractDir)
-        return fallback()
+        return fallback_co()
       else
         log:sinfo("Found manifest at %s", manifest_path)
       end
